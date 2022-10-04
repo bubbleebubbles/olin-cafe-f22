@@ -10,5 +10,6 @@ module adder_1(a, b, c_in, sum, c_out);
 input wire a, b, c_in;
 output logic sum, c_out;
 
+assign(c_out,sum)=a+b+c_in;
 
 endmodule

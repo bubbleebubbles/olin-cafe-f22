@@ -9,43 +9,50 @@ input wire ena;
 input wire state_0;
 output logic state_d; // NOTE - this is only an output of the module for debugging purposes. 
 output logic state_q;
+//logic next_state;
+
+logic live_neighbors_3;
+logic continue_alive;
+logic enabled_output;
+logic reset_output;
 
 input wire [7:0] neighbors;
+logic [3:0] live_neighbors;
+wire [1:0] n12;
+wire [1:0] n34;
+wire [1:0] n56;
+wire [1:0] n78;
+wire [2:0] n1234;
+wire [2:0] n5678;
 
-//adder here -- should output sum that is a 4 bit number
-//decoder_3_to_8(en, in, out)
-//
-parameter neighbors[7:0] = 0; 
-wire [2:0] adder_output;
-assign adder_output[0] = 0; 
-assign adder_output[1] = 0; 
-assign adder_output[2] = 0; 
-wire [7:0] neighbors_alive;
-decoder_3_to_8 COUNT(1, adder_output[2:0], neighbors_alive);
+// Sum neighbors into 4 2-bit numbers using 1-bit full adders
+adder_1 sum_n12(.a(neighbors[0]),.b(neighbors[1]),.c_in(1'b0),.sum(n12[0]),.c_out(n12[1]));
+adder_1 sum_n34(.a(neighbors[2]),.b(neighbors[3]),.c_in(1'b0),.sum(n34[0]),.c_out(n34[1]));
+adder_1 sum_n56(.a(neighbors[4]),.b(neighbors[5]),.c_in(1'b0),.sum(n56[0]),.c_out(n56[1]));
+adder_1 sum_n78(.a(neighbors[6]),.b(neighbors[7]),.c_in(1'b0),.sum(n78[0]),.c_out(n78[1]));
 
-wire en1; 
-wire en2; 
+// Sum neighbors into 2 4-bit numbers using 2-bit parallel adders
+adder_parallel_2 sum_n1234(.a(n12),.b(n34),.c_in(1'b0),.sum(n1234[1:0]),.c_out(n1234[2]));
+adder_parallel_2 sum_n5678(.a(n56),.b(n78),.c_in(1'b0),.sum(n5678[1:0]),.c_out(n5678[2]));
 
-wire data1; 
-wire data2; 
-wire data3; 
-wire select1; 
-wire select2; 
+// Sum neighbors using a 3-bit parallel adder
+adder_parallel_3 sum_n12345678(.a(n1234),.b(n5678),.c_in(1'b0),.sum(live_neighbors[2:0]),.c_out(live_neighbors[3]));
 
-assign select1 = neighbors_alive[0]|neighbors_alive[2]|neighbors_alive[3]|neighbors_alive[4]| neighbors_alive[5]|neighbors_alive[6]|neighbors_alive[7]; 
-assign data1 = ~select1; 
-assign en1 = (select1 ? 1'b1:1'b0); 
-assign data3 = neighbors_alive[2]; 
-assign select2 = neighbors_alive[1]; 
-assign en2 = (select2 ? 1'b0:1'b1); 
 
-wire en_cell; 
-assign en_cell = en1^en2; 
-assign rst = en_cell; 
+always_comb begin
+    live_neighbors_3 =~live_neighbors[3]&~live_neighbors[2]&live_neighbors[1]&live_neighbors[0];
+    continue_alive=state_q&~live_neighbors[3]&~live_neighbors[2]&live_neighbors[1]&~live_neighbors[0];
+    state_d = live_neighbors_3 | continue_alive;
+end
 
-assign state_d = (select1?(~data1):data3); 
+always_comb begin
+    enabled_output=(ena)?state_d:state_q;
+    reset_output=(rst)?state_0:enabled_output;
+end
 
-//flip flop 
+always_ff @(posedge clk) begin
+    state_q <= reset_output;
+end
 
 
 endmodule

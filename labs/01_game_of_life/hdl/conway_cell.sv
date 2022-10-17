@@ -39,7 +39,7 @@ adder_parallel_3 SUM_N(.a(n1234),.b(n5678),.c_in(1'b0),.sum(live_neighbors[2:0])
 
 logic next_state; 
 always_comb begin: INPUT_LOGIC
-    next_state = (~live_neighbors[3]&~live_neighbors[2]&live_neighbors[1])& ((state_q & ~live_neighbors)|live_neighbors[0]); 
+    next_state = (~live_neighbors[3]&~live_neighbors[2]&live_neighbors[1])& ((state_q & ~live_neighbors[0])|live_neighbors[0]); 
     state_d = ~rst ? (ena ? next_state : state_q) : state_0;
     /*
     live_neighbors_3 =(~live_neighbors[3]&~live_neighbors[2]&live_neighbors[1]);
@@ -53,6 +53,7 @@ always_comb begin
     reset_output=(rst)?state_0:enabled_output;
 end
 */
+
 always_ff @(posedge clk) begin: D_FLIP_FLOP
     state_q <= state_d;
 end

@@ -9,7 +9,6 @@ input wire ena;
 input wire state_0;
 output logic state_d; // NOTE - this is only an output of the module for debugging purposes. 
 output logic state_q;
-logic next_state; 
 
 logic next_state; //Used when computing conway logic for the cell's next state 
 

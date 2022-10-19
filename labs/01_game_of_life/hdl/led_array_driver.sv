@@ -28,8 +28,10 @@ initial begin
   end
 end
 
+//Select Column - set chosen column HIGH
 decoder_3_to_8 COL_DECODER(ena, x, cols);
 
+//Select Row - set row with LED to light up LOW
 generate 
     genvar row; 
     for (row = 0; row < N; row++) begin 
@@ -38,7 +40,5 @@ generate
         end
     end 
 endgenerate 
-
-    
 
 endmodule

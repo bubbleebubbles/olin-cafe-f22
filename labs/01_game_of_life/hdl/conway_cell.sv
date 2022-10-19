@@ -11,10 +11,7 @@ output logic state_d; // NOTE - this is only an output of the module for debuggi
 output logic state_q;
 logic next_state; 
 
-//logic live_neighbors_3;
-//logic continue_alive;
-//logic enabled_output;
-//logic reset_output;
+logic next_state; //Used when computing conway logic for the cell's next state 
 
 input wire [7:0] neighbors;
 logic [3:0] live_neighbors;
@@ -39,20 +36,9 @@ adder_parallel_2 SUM_N5678(.a(n56),.b(n78),.c_in(1'b0),.sum(n5678[1:0]),.c_out(n
 adder_parallel_3 SUM_N(.a(n1234),.b(n5678),.c_in(1'b0),.sum(live_neighbors[2:0]),.c_out(live_neighbors[3]));
 
 always_comb begin: INPUT_LOGIC
-    next_state = (~live_neighbors[3]&~live_neighbors[2]&live_neighbors[1])& ((state_q & ~live_neighbors[0])|live_neighbors[0]); 
-    state_d = ~rst ? (ena ? next_state : state_q) : state_0;
-    /*
-    live_neighbors_3 =(~live_neighbors[3]&~live_neighbors[2]&live_neighbors[1]);
-    continue_alive=state_q&~live_neighbors[0];
-    state_d = ~rst ? (ena ? (live_neighbors_3 | continue_alive): state_q) : state_0;
-    */ 
+    next_state = (~live_neighbors[3]&~live_neighbors[2]&live_neighbors[1])& ((state_q & ~live_neighbors[0])|live_neighbors[0]); //logic for conway game of life 
+    state_d = ~rst ? (ena ? next_state : state_q) : state_0; //state muxes 
 end
-/*
-always_comb begin
-    enabled_output=(ena)?state_d:state_q;
-    reset_output=(rst)?state_0:enabled_output;
-end
-*/
 
 always_ff @(posedge clk) begin: D_FLIP_FLOP
     state_q <= state_d;

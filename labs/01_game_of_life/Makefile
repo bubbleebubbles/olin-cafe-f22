@@ -53,6 +53,11 @@ program_fpga_digilent: main.bit
 	djtgcfg enum
 	djtgcfg prog -d CmodA7 -i 0 -f main.bit
 
+main.bit: $(MAIN_SRCS)
+    @echo "########################################"
+    @echo "#### Building FPGA bitstream        ####"
+    @echo "########################################"
+    ${VIVADO} build.tcl
 
 # Call this to clean up all your generated files
 clean:

@@ -183,4 +183,38 @@ block_ram #(.W(VRAM_W), .L(VRAM_L)) VRAM(
 );
 // Add your vram control FSM here:
 
+enum logic {VRAM_CLEAR, VRAM_ACTIVE} vram_state;
+
+always_ff @(posedge clk) begin
+  if (rst) begin
+    vram_clear_counter <= VRAM_L - 1;
+    vram_state <= VRAM_CLEAR;
+  end
+  else begin
+    case (vram_state)
+      VRAM_CLEAR: begin
+        vram_clear_counter <= vram_clear_counter - 1;
+        if (vram_clear_counter == 0) begin
+          vram_state <= VRAM_ACTIVE;
+        end
+      end
+    endcase
+  end
+end
+
+always_comb begin
+  case (vram_state)
+    VRAM_CLEAR: begin
+      vram_wr_ena = 1;
+      vram_wr_data = NAVY;
+      vram_wr_addr = vram_clear_counter;
+    end
+    VRAM_ACTIVE: begin
+      vram_wr_ena = touch0.valid;
+      vram_wr_data = PINK;
+      vram_wr_addr = DISPLAY_WIDTH * touch0.y + touch0.x;
+    end
+  endcase
+end
+
 endmodule

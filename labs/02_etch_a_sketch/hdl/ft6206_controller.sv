@@ -74,27 +74,27 @@ always_ff @(posedge clk) begin
   end else begin
     case(state)
       S_IDLE : begin
-        if(i_ready & ena)
+        if(i_ready & ena) // check if controller is ready and module is enabled
           active_register <= TD_STATUS;
           state <= S_GET_REG_REG;
       end
       S_INIT : begin
         state <= S_SET_THRESHOLD_REG;
       end
-      S_SET_THRESHOLD_REG: begin
+      S_SET_THRESHOLD_REG: begin // write THRESHOLD to device and wait for I2C controller to write data; sets i_valid and i_data using CL at bottom
         state <= S_WAIT_FOR_I2C_WR;
         state_after_wait <= S_SET_THRESHOLD_DATA;
       end
-      S_SET_THRESHOLD_DATA: begin
+      S_SET_THRESHOLD_DATA: begin // write FT6206_DEFAULT_THRESHOLD to device; sets i_valid and i_data using CL at bottom
         state <= S_WAIT_FOR_I2C_WR;
         state_after_wait <= S_IDLE;
       end
-      S_GET_REG_REG: begin
+      S_GET_REG_REG: begin // write active_register to device; sets i_valid and i_data using CL at bottom
         state <= S_WAIT_FOR_I2C_WR;
         state_after_wait <= S_GET_REG_DATA;
       end
-      S_GET_REG_DATA: begin
-        state <= S_WAIT_FOR_I2C_RD;
+      S_GET_REG_DATA: begin // wait for i_ready and o_valid to be set; read register specified in the last state; sets i_valid and i_data using CL at bottom
+        state <= S_WAIT_FOR_I2C_RD; 
         state_after_wait <= S_GET_REG_DONE;
       end
       S_GET_REG_DONE: begin
@@ -104,15 +104,15 @@ always_ff @(posedge clk) begin
         else begin
           active_register <= active_register.next;
           case(active_register)
-            TD_STATUS: begin
+            TD_STATUS: begin // touch valid status
               num_touches <= |o_data[3:2] ? 0 : o_data[1:0];
-              if(o_data[3:0] == 4'd2) begin
+              if(o_data[3:0] == 4'd2) begin // if two touches, touch0 and touch1 are valid
                 touch0_buffer.valid <= 1;
                 touch1_buffer.valid <= 1;
-              end else if (o_data[3:0] == 4'd1) begin
+              end else if (o_data[3:0] == 4'd1) begin // if one touch, touch0 is valid
                 touch0_buffer.valid <= 1;
                 touch1_buffer.valid <= 0;
-              end else begin
+              end else begin // no touch is valid, set outputs as not valid
                 touch0.valid <= 0;
                 touch1.valid <= 0;
                 touch0_buffer.valid <= 0;
@@ -120,29 +120,29 @@ always_ff @(posedge clk) begin
               end
             end
             P1_XH: begin
-              touch0_buffer.x[11:8] <= o_data[3:0];
-              touch0_buffer.contact <= o_data[7:6];
+              touch0_buffer.x[11:8] <= o_data[3:0]; // get x position
+              touch0_buffer.contact <= o_data[7:6]; // get contact information
             end
-            P1_XL : begin
-              touch0_buffer.x[7:0] <= o_data;
+            P1_XL : begin // P1_XL = (x[7:0])
+              touch0_buffer.x[7:0] <= o_data; // get the rest of the x position
             end
-            P1_YH : begin
-              touch0_buffer.y[11:8] <= o_data[3:0];
-              touch0_buffer.id <= o_data[7:4];
+            P1_YH : begin // P1_YH = (id[3:0], y[7:4])
+              touch0_buffer.y[11:8] <= o_data[3:0]; // get y position
+              touch0_buffer.id <= o_data[7:4]; // get touch id
             end
-            P1_YL : begin
-              touch0_buffer.y[7:0] <= o_data;
+            P1_YL : begin // P1_YL = (y[7:0])
+              touch0_buffer.y[7:0] <= o_data; // get the rest of the y position
             end
           endcase
           if(active_register == P1_YL) // TODO(avinash) replace constant
-            state <= S_TOUCH_DONE;
+            state <= S_TOUCH_DONE; // set state to S_TOUCH_DONE if the last register available to read is reached
           else
-            state <= S_GET_REG_REG;
+            state <= S_GET_REG_REG; // set state to S_GET_REG_REG to read the next register
         end
       end
       S_TOUCH_DONE: begin
-        if(num_touches >= 2'd1) begin
-          touch0.valid <= touch0_buffer.valid;
+        if(num_touches >= 2'd1) begin // if there's a valid touch
+          touch0.valid <= touch0_buffer.valid; // update touch0 output with appropriate value from the buffer
           touch0.x <= DISPLAY_WIDTH - touch0_buffer.x; // fix orientation
           touch0.y <= DISPLAY_HEIGHT - touch0_buffer.y; // fix orientation
           touch0.contact <= touch0_buffer.contact;
@@ -151,10 +151,10 @@ always_ff @(posedge clk) begin
         // See if you can modify the above to do multitouch!
         state <= S_IDLE;
       end      
-      S_WAIT_FOR_I2C_WR : begin
+      S_WAIT_FOR_I2C_WR : begin // wait until secondary is ready for a new write (last write has finished)
         if(i_ready) state <= state_after_wait;
       end
-      S_WAIT_FOR_I2C_RD : begin
+      S_WAIT_FOR_I2C_RD : begin // wait until the secondary data is ready
         if(i_ready & o_valid) state <= state_after_wait;
       end
     endcase

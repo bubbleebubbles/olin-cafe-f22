@@ -98,7 +98,7 @@ enum logic [2:0] {
   S_CFG_DONE
 } cfg_state, cfg_state_after_wait;
 
-ILI9341_color_t pixel_color;
+ILI9341_color_t pixel_color; // color options
 logic [N_X-1:0] pixel_x;
 logic [N_Y-1:0] pixel_y;
 

@@ -206,12 +206,12 @@ always_comb begin
   case (vram_state)
     VRAM_CLEAR: begin
       vram_wr_ena = 1;
-      vram_wr_data = NAVY;
+      vram_wr_data = BLUE;
       vram_wr_addr = vram_clear_counter;
     end
     VRAM_ACTIVE: begin
       vram_wr_ena = touch0.valid;
-      vram_wr_data = PINK;
+      vram_wr_data = RED;
       vram_wr_addr = DISPLAY_WIDTH * touch0.y + touch0.x;
     end
   endcase

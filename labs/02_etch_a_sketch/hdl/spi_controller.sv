@@ -36,11 +36,13 @@ enum logic [2:0] {S_IDLE, S_TXING, S_TX_DONE, S_RXING, S_RX_DONE, S_ERROR } stat
 logic [15:0] tx_data;
 logic [23:0] rx_data;
 
+//Chip Select Logic 
 always_comb begin : csb_logic
   case(state)
+    //Chip select bar goes LOW before SPI transaction -- else, remains high. 
     S_IDLE, S_ERROR : csb = 1;
     S_TXING, S_TX_DONE, S_RXING, S_RX_DONE: csb = 0;
-    default: csb = 1;
+    default: csb = 1; //remain off (high) until cases above are met 
   endcase
 end
 
@@ -63,8 +65,9 @@ so that's a negative edge.
 */
 always_ff @(posedge clk) begin : spi_controller_fsm
   if(rst) begin
+    //Set device to idle upon reset. 
     state <= S_IDLE;
-    sclk <= 0;
+    sclk <= 0; 
     bit_counter <= 0;
     o_valid <= 0;
     i_ready <= 1;
@@ -72,11 +75,12 @@ always_ff @(posedge clk) begin : spi_controller_fsm
     rx_data <= 0;
     o_data <= 0;
   end else begin
+    //Else, begin transmitting/recieving
     case(state)
       S_IDLE : begin
 // SOLUTION START
         i_ready <= 1;
-        sclk <= 0;
+        sclk <= 0; 
         if(i_valid) begin
           tx_data <= i_data;
           rx_data <= 0;
@@ -99,7 +103,8 @@ always_ff @(posedge clk) begin : spi_controller_fsm
 // SOLUTION START
 // SOLUTION END
         end else begin // negative edge logic
-          
+          //peripheral/secondary device will be listening for message on
+          //negative edge. 
           if(bit_counter != 0) begin
             bit_counter <= bit_counter - 1;
           end else begin
@@ -135,6 +140,7 @@ always_ff @(posedge clk) begin : spi_controller_fsm
             bit_counter <= bit_counter - 1;
           end else begin
             case(spi_mode)
+            //shift left register
               WRITE_8_READ_8 : o_data <= {16'b0, rx_data[7:0]};
               WRITE_8_READ_16: o_data <= { 8'b0, rx_data[15:0]};
               WRITE_8_READ_24: o_data <= rx_data[23:0];

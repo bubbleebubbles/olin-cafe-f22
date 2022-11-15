@@ -149,7 +149,7 @@ ili9341_display_controller ILI9341(
   .vram_rd_addr(vram_rd_addr),
   .vram_rd_data(vram_rd_data),
   // !!! NOTE - change enable_test_pattern to zero once you start implementing the video ram !!!
-  .enable_test_pattern(1'b1) 
+  .enable_test_pattern(1'b0) 
 );
 
 /* ------------------------------------------------------------------------- */

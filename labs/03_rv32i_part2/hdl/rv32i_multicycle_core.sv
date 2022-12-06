@@ -72,7 +72,7 @@ alu_behavioural ALU (
 // Implement your multicycle rv32i CPU here!
 
 // ALU Muxes
-always_comb begin: ALU_MUX_1
+always_comb begin: ALU_MUX_SRC_A
   case (alu_src_a)
     default: src_a=0;
     ALU_SRC_A_PC: src_a = PC;
@@ -81,11 +81,11 @@ always_comb begin: ALU_MUX_1
   endcase
 end
 
-always_comb begin: ALU_MUX_2
+always_comb begin: ALU_MUX_SRC_B
   case (alu_src_b)
     default: src_b=0;
-    ALU_SRC_B_PC: src_b = PC;
-    ALU_SRC_B_OLD_PC: src_b = PC_old;
+    ALU_SRC_B_IMM: src_b = extended_immediate;
+    ALU_SRC_B_4: src_b = 32'd4;
     ALU_SRC_B_RF: src_b = reg_B;
   endcase
 end
@@ -97,7 +97,7 @@ end
 logic [6:0] op;
 logic r_type, i_type, l_type, s_type, b_type, j_type;
 enum logic [1:0] {IMM_SRC_I_TYPE, IMM_SRC_S_TYPE, IMM_SRC_B_TYPE, IMM_SRC_J_TYPE} immediate_src;
-logic [31:0] immediate_extended; 
+logic [31:0] extended_immediate; 
 
 // Op type comparators
 r_type = (op==OP_R_TYPE);
@@ -138,9 +138,9 @@ always_comb: begin
           $display("Error - op %b not implemented", op);
           next_state = S_ERROR;
         end
-        OP_R_TYPE: next_state = S_EXECUTER;
-        OP_I_TYPE: next_state = S_EXECUTEI;
-        OP_S_TYPE, OP_L_TYPE, OP_LUI: next_state = S_MEMADR;
+        OP_R_TYPE: next_state = S_EXECUTER; // R-type
+        OP_I_TYPE: next_state = S_EXECUTEI; // I-type ALU
+        OP_S_TYPE, OP_L_TYPE, OP_LUI: next_state = S_MEMADR; // lw or sw
         OP_JAL: next_state = S_JUMP;
         OP_JALR: next_state = S_BRANCH;
       endcase

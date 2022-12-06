@@ -84,6 +84,7 @@ always_comb begin: ALU_MUX_SRC_A
   endcase
 end
 
+logic [31:0] extended_immediate;
 always_comb begin: ALU_MUX_SRC_B
   case (alu_src_b)
     default: src_b=0;
@@ -206,7 +207,7 @@ always_comb: begin
   endcase
 end
 
-assign {AdrSrc, IRWrite, ALUSrcA, ALUSrcB, ALUOp, ResultSrc, PCUpdate, RegWrite, MemWrite, Branch} = controls
+assign {AdrSrc, IRWrite, ALUSrcA, ALUSrcB, ALUOp, ResultSrc, PCUpdate, RegWrite, MemWrite, Branch} = controls;
 
         // add
         // sub

@@ -151,7 +151,113 @@ always_comb begin: RESULT_ALIASES //for things that are connected/same value
     rfile_wr_data = result; 
 end
 
+// Main FSM
 
+typedef enum [3:0] {S_FETCH, S_DECODE, S_MEMADR, S_EXECUTER, S_EXECUTEI, S_JUMP, S_BRANCH, S_MEMREAD, S_ALUWB, S_MEMREAD, S_MEMWRITE, S_MEMWB, S_BEQ, S_JAL, S_ERROR=4'hF } statetype;
+
+statetype state, next_state;
+logic [14:0] controls;
+
+// State register
+always @(posedge clk or posedge rst) begin : FSM_MULTICYCLE
+  if (rst) state <= S_FETCH;
+  else state <= next_state;
+
+// Logic for next state
+always_comb: begin
+  case(state)
+    default: next_state = S_FETCH;
+    S_FETCH: next_state = S_DECODE;
+    S_DECODE: begin
+      casez(op) 
+      // casez is a "wildcard" case expression that allows "Z" and "?" to be treated 
+      // as don't care values in either the case expression and/or the case item when 
+      // doing a comparison
+        default: begin
+          $display("Error - op %b not implemented", op);
+          next_state = S_ERROR;
+        end
+        /*
+        OP_R_TYPE: next_state = S_EXECUTER; // R-type
+        OP_I_TYPE: next_state = S_EXECUTEI; // I-type ALU
+        OP_S_TYPE, OP_L_TYPE, OP_LUI: next_state = S_MEMADR; // lw or sw
+        OP_JAL: next_state = S_JUMP;
+        OP_JALR: next_state = S_BRANCH;
+        */
+        7'b0?00011: next_state = S_MEMADR; // lw or sw
+        7'b0110011: next_state = S_EXECUTER; // R-type
+        7'b0010011: next_state = S_EXECUTEI; // I-type
+        7'b1101111: next_state = S_JAL; // jal
+        7'b1100011: next_state = S_BEQ; // beq
+      endcase
+    end
+    S_MEMADR: begin
+      case(op)
+        default: next_state = S_ERROR;
+        /*
+        OP_L_TYPE, OP_LUI: next_state = S_MEMREAD;
+        OP_S_TYPE: next_state = S_MEMWRITE;
+        */
+        if (op[5]) next_state = S_MEMWRITE; // sw
+        else next_state = S_MEMREAD; // lw
+      endcase
+    end
+    S_MEMREAD: next_state = S_MEMWB;
+    S_EXECUTEI, S_EXECUTER, S_JAL: next_state = S_ALUWB;
+    S_ALUWB, S_MEMREAD, S_MEMWRITE: next_state = S_FETCH;
+    S_JUMP: begin
+      $display("Please implement jumps")
+      next_state = S_ERROR;
+    end
+    S_BRANCH: begin
+      $display("Please implement branches")
+      next_state = S_ERROR;
+    end
+end
+
+
+// state output logic
+always_comb: begin
+  case(state)
+    // AdrSrc_IRWrite_ALUSrcA_ALUSrcB_ALUOp_ResultSrc_PCUpdate_RegWrite_MemWrite_Branch
+    S_FETCH: controls=15'b0_1_00_10_00_10_1_0_0_0;
+    S_DECODE: controls=15'b0_0_01_01_00_00_0_0_0_0;
+    S_MEMADR: controls=15'b0_0_10_01_00_00_0_0_0_0;
+    S_MEMREAD: controls=15'b1_0_00_00_00_00_0_0_0_0;
+    S_MEMWRITE: controls=15'b1_0_00_00_00_00_0_0_1_0;
+    S_MEMWB: controls=15'b0_0_00_00_00_01_0_1_0_0;
+    S_EXECUTER: controls=15'b0_0_10_00_10_00_0_0_0_0;
+    S_EXECUTEI: controls=15'b0_0_10_01_10_00_0_0_0_0;
+    S_ALUWB: controls=15'b0_0_00_00_00_00_1_0_0_0;
+    S_JAL: controls=15'b0_0_10_00_01_00_0_0_0_1;
+    S_BEQ: controls=15'b0_0_01_10_00_00_1_0_0_0;
+    default: controls=15'bx_x_xx_xx_xx_xx_x_x_x_x;
+  endcase
+end
+
+assign {AdrSrc, IRWrite, ALUSrcA, ALUSrcB, ALUOp, ResultSrc, PCUpdate, RegWrite, MemWrite, Branch} = controls;
+
+        // add
+        // sub
+        // xor
+        // or
+        // and
+        // sll
+        // srl
+        // sra
+        // slt
+        // sltu
+        // addi
+        // xori
+        // ori
+        // andi
+        // slli
+        // srli
+        // srai
+        // slti
+        // sltiu
+        // jalr
+        // bne
 
 
 endmodule

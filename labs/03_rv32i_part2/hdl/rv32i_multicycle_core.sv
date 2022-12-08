@@ -160,6 +160,15 @@ ltype = (op == OP_LTYPE);
 jtype = (op == OP_JAL) | (op == OP_JALR)
 end 
 
+logic branch;
+logic [3:0] flags;
+logic v, c, n, z; // Flags: overflow, carry out, negative, zero
+logic cond; // cond is 1 when condition for branch met
+assign {v, c, n, z} = flags;
+assign taken = cond & branch;
+logic PCTargetSrc;
+logic [2:0] ImmSrc;
+
 //ALU Decoding Types of Instructions 
 always_comb begin: ALU_DECODE_INSTRUCTION
     case(funct3)
@@ -181,6 +190,8 @@ always_comb begin: ALU_DECODE_INSTRUCTION
                 ri_alu_control = ALU_SRA;
             else 
                 ri_alu_control = ALU_SRL;
+        FUNCT3_BNE: cond = ~z;
+        
         end 
     endcase 
 end 

@@ -162,9 +162,9 @@ end
 
 logic branch; // check if using
 logic [3:0] flags;
-logic v, c, n, z; // Flags: overflow, carry out, negative, zero
+//logic v, c, n, zero; // Flags: overflow, carry out, negative, zero
 logic cond; // cond is 1 when condition for branch met
-assign {v, c, n, z} = flags; // check if using
+//assign {v, c, n, zero} = flags; // check if using
 logic PCTargetSrc;
 logic [2:0] ImmSrc;
 
@@ -190,11 +190,11 @@ always_comb begin: ALU_DECODE_INSTRUCTION
             else 
                 ri_alu_control = ALU_SRL;
         FUNCT3_BNE: begin
-          if(cond = ~z)
+          if(cond = ~1b'0)
             PC_ena = 1;
         end
         FUNCT3_BEQ: begin
-          if(cond = z)
+          if(cond = 1b'0)
             PC_ena = 1;
         end
         end 
@@ -281,9 +281,10 @@ always_comb: begin
     S_MEMWB:    controls=15'b0_0_00_00_00_01_0_1_0_0;
     S_EXECUTER: controls=15'b0_0_10_00_10_00_0_0_0_0;
     S_EXECUTEI: controls=15'b0_0_10_01_10_00_0_0_0_0;
-    S_ALUWB:    controls=15'b0_0_00_00_00_00_1_0_0_0;
-    S_JAL:      controls=15'b0_0_10_00_01_00_0_0_0_1;
-    S_BEQ:      controls=15'b0_0_01_10_00_00_1_0_0_0;
+    S_ALUWB:    controls=15'b0_0_00_00_00_00_0_1_0_0;
+    S_JAL:      controls=15'b0_0_01_10_00_00_1_0_0_0;
+    S_BEQ:      controls=15'b0_0_10_00_01_00_1_0_0_1;
+    S_BNE:      controls=15'b0_0_10_00_01_00_1_0_0_1;
     default:    controls=15'bx_x_xx_xx_xx_xx_x_x_x_x;
   endcase
 end

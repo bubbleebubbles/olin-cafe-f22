@@ -73,7 +73,7 @@ always_comb mem_wr_data = reg_B;
 // ALU and related control signals
 // Feel free to replace with your ALU from the homework.
 logic [31:0] src_a, src_b;
-alu_control_t alu_control;
+alu_control_t alu_control, ri_alu_control;
 wire [31:0] alu_result;
 wire overflow, zero, equal;
 alu_behavioural ALU (
@@ -103,7 +103,7 @@ enum logic [1:0] {ALU_SRC_B_4, ALU_SRC_B_IMM_EXT, ALU_SRC_B_RB} alu_src_b;
 always_comb begin: ALU_MUX_B
     case (alu_src_b)
         ALU_SRC_B_RB: src_b = reg_B; 
-        ALU_SRC_B_IMM_EXT: src_b = immidiate_extended ; 
+        ALU_SRC_B_IMM_EXT: src_b = immediate_extended ; 
         ALU_SRC_B_4: src_b = 32'd4; 
         default: src_a = 0; 
     endcase
@@ -151,6 +151,41 @@ always_comb begin: RESULT_ALIASES //for things that are connected/same value
     rfile_wr_data = result; 
 end
 
+always_comb begin: INSTRUCTION_TYPES
+rtype = (op == OP_RTYPE); 
+itype = (op == OP_ITYPE); 
+stype = (op == OP_STYPE); 
+btype = (op == OP_BTYPE); 
+ltype = (op == OP_LTYPE); 
+jtype = (op == OP_JAL) | (op == OP_JALR)
+end 
+
+//ALU Decoding Types of Instructions 
+always_comb begin: ALU_DECODE_INSTRUCTION
+    case(funct3)
+        FUNCT3_ADD: begin
+            if(funct7[5] & rtype)
+                ri_alu_control = ALU_SUB; 
+            else
+                ri_alu_control = ALU_ADD; 
+        end 
+
+        FUNCT3_SLT: ri_alu_control = ALU_SLT; 
+        FUNCT3_XOR: ri_alu_control = ALU_XOR;
+        FUNCT3_SLL: ri_alu_control = ALU_SLL; 
+        FUNCT3_OR:  ri_alu_control = ALU_OR; 
+        FUNCT3_AND: ri_alu_control = ALU_AND; 
+        FUNCT3_SLTU: ri_alu_control = ALU_SLTU;
+        FUNCT3_SHIFT_RIGHT: begin 
+            if(funct7[5])
+                ri_alu_control = ALU_SRA;
+            else 
+                ri_alu_control = ALU_SRL;
+        end 
+    endcase 
+end 
+        
+
 // Main FSM
 
 typedef enum [3:0] {S_FETCH, S_DECODE, S_MEMADR, S_EXECUTER, S_EXECUTEI, S_JUMP, S_BRANCH, S_MEMREAD, S_ALUWB, S_MEMREAD, S_MEMWRITE, S_MEMWB, S_BEQ, S_JAL, S_ERROR=4'hF } statetype;
@@ -177,27 +212,18 @@ always_comb: begin
           $display("Error - op %b not implemented", op);
           next_state = S_ERROR;
         end
-        /*
-        OP_R_TYPE: next_state = S_EXECUTER; // R-type
-        OP_I_TYPE: next_state = S_EXECUTEI; // I-type ALU
-        OP_S_TYPE, OP_L_TYPE, OP_LUI: next_state = S_MEMADR; // lw or sw
-        OP_JAL: next_state = S_JUMP;
-        OP_JALR: next_state = S_BRANCH;
-        */
-        7'b0?00011: next_state = S_MEMADR; // lw or sw
-        7'b0110011: next_state = S_EXECUTER; // R-type
-        7'b0010011: next_state = S_EXECUTEI; // I-type
-        7'b1101111: next_state = S_JAL; // jal
-        7'b1100011: next_state = S_BEQ; // beq
+        //replace with variables from defines file 
+        OP_LTYPE: next_state = S_MEMADR; // lw
+        OP_STYPE: next_state = S_MEMADR; // sw
+        OP_RTYPE: next_state = S_EXECUTER; // R-type
+        OP_ITYPE: next_state = S_EXECUTEI; // I-type
+        OP_JAL: next_state = S_JAL; // jal
+        OP_BTYPE: next_state = S_BEQ; // beq
       endcase
     end
     S_MEMADR: begin
       case(op)
         default: next_state = S_ERROR;
-        /*
-        OP_L_TYPE, OP_LUI: next_state = S_MEMREAD;
-        OP_S_TYPE: next_state = S_MEMWRITE;
-        */
         if (op[5]) next_state = S_MEMWRITE; // sw
         else next_state = S_MEMREAD; // lw
       endcase

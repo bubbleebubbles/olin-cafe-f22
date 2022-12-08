@@ -160,12 +160,11 @@ ltype = (op == OP_LTYPE);
 jtype = (op == OP_JAL) | (op == OP_JALR)
 end 
 
-logic branch;
+logic branch; // check if using
 logic [3:0] flags;
 logic v, c, n, z; // Flags: overflow, carry out, negative, zero
 logic cond; // cond is 1 when condition for branch met
-assign {v, c, n, z} = flags;
-assign taken = cond & branch;
+assign {v, c, n, z} = flags; // check if using
 logic PCTargetSrc;
 logic [2:0] ImmSrc;
 
@@ -190,8 +189,14 @@ always_comb begin: ALU_DECODE_INSTRUCTION
                 ri_alu_control = ALU_SRA;
             else 
                 ri_alu_control = ALU_SRL;
-        FUNCT3_BNE: cond = ~z;
-        
+        FUNCT3_BNE: begin
+          if(cond = ~z)
+            PC_ena = 1;
+        end
+        FUNCT3_BEQ: begin
+          if(cond = z)
+            PC_ena = 1;
+        end
         end 
     endcase 
 end 
@@ -199,7 +204,7 @@ end
 
 // Main FSM
 
-typedef enum [3:0] {S_FETCH, S_DECODE, S_MEMADR, S_EXECUTER, S_EXECUTEI, S_JUMP, S_BRANCH, S_MEMREAD, S_ALUWB, S_MEMREAD, S_MEMWRITE, S_MEMWB, S_BEQ, S_JAL, S_ERROR=4'hF } statetype;
+typedef enum [3:0] {S_FETCH, S_DECODE, S_MEMADR, S_EXECUTER, S_EXECUTEI, S_JUMP, S_BRANCH, S_MEMREAD, S_ALUWB, S_MEMREAD, S_MEMWRITE, S_MEMWB, S_BEQ, S_JAL, S_JALR, S_ERROR=4'hF } statetype;
 
 statetype state, next_state;
 logic [14:0] controls;
@@ -229,7 +234,8 @@ always_comb: begin
         OP_RTYPE: next_state = S_EXECUTER; // R-type
         OP_ITYPE: next_state = S_EXECUTEI; // I-type
         OP_JAL: next_state = S_JAL; // jal
-        OP_BTYPE: next_state = S_BEQ; // beq
+        OP_JALR: next_state = S_JALR; // jalr
+        OP_BTYPE: next_state = S_BRANCH; // beq, bne
       endcase
     end
     S_MEMADR: begin
@@ -243,12 +249,22 @@ always_comb: begin
     S_EXECUTEI, S_EXECUTER, S_JAL: next_state = S_ALUWB;
     S_ALUWB, S_MEMREAD, S_MEMWRITE: next_state = S_FETCH;
     S_JUMP: begin
+      /*
       $display("Please implement jumps")
       next_state = S_ERROR;
+      */
+
     end
     S_BRANCH: begin
+      /*
       $display("Please implement branches")
       next_state = S_ERROR;
+      */
+      alu_src_a = ALU_SRC_A_RA;
+      alr_src_b = ALU_SRC_B_RB;
+      ri_alu_control = ALU_SUB;
+      result_src = RESULT_SRC_ALU;
+      next_state = S_FETCH;
     end
 end
 
@@ -257,18 +273,18 @@ end
 always_comb: begin
   case(state)
     // AdrSrc_IRWrite_ALUSrcA_ALUSrcB_ALUOp_ResultSrc_PCUpdate_RegWrite_MemWrite_Branch
-    S_FETCH: controls=15'b0_1_00_10_00_10_1_0_0_0;
-    S_DECODE: controls=15'b0_0_01_01_00_00_0_0_0_0;
-    S_MEMADR: controls=15'b0_0_10_01_00_00_0_0_0_0;
-    S_MEMREAD: controls=15'b1_0_00_00_00_00_0_0_0_0;
+    S_FETCH:    controls=15'b0_1_00_10_00_10_1_0_0_0;
+    S_DECODE:   controls=15'b0_0_01_01_00_00_0_0_0_0;
+    S_MEMADR:   controls=15'b0_0_10_01_00_00_0_0_0_0;
+    S_MEMREAD:  controls=15'b1_0_00_00_00_00_0_0_0_0;
     S_MEMWRITE: controls=15'b1_0_00_00_00_00_0_0_1_0;
-    S_MEMWB: controls=15'b0_0_00_00_00_01_0_1_0_0;
+    S_MEMWB:    controls=15'b0_0_00_00_00_01_0_1_0_0;
     S_EXECUTER: controls=15'b0_0_10_00_10_00_0_0_0_0;
     S_EXECUTEI: controls=15'b0_0_10_01_10_00_0_0_0_0;
-    S_ALUWB: controls=15'b0_0_00_00_00_00_1_0_0_0;
-    S_JAL: controls=15'b0_0_10_00_01_00_0_0_0_1;
-    S_BEQ: controls=15'b0_0_01_10_00_00_1_0_0_0;
-    default: controls=15'bx_x_xx_xx_xx_xx_x_x_x_x;
+    S_ALUWB:    controls=15'b0_0_00_00_00_00_1_0_0_0;
+    S_JAL:      controls=15'b0_0_10_00_01_00_0_0_0_1;
+    S_BEQ:      controls=15'b0_0_01_10_00_00_1_0_0_0;
+    default:    controls=15'bx_x_xx_xx_xx_xx_x_x_x_x;
   endcase
 end
 

@@ -18,16 +18,23 @@ We're using [Adafruit's 2.8" TFT LCD with Cap Touch Breakout Board w/MicroSD Soc
 Last, there are a ton of best practice techniques hidden in this folder, I encourage you to explore to get some practice of learning from professional examples.
 
 ## Lab Report Details
-- [ ] Pulse generator
-- [ ] PWM Module
-- [ ] Triangle Generator
-- [ ] One of:
+- [X] Pulse generator
+- [X] PWM Module
+- [X] Triangle Generator
+- [X] One of:
     - [ ] SPI Controller for Display
-    - [ ] i2c Controller for touchscreen
-- [ ] Learning from Professional Code: In your own words, describe the FSMs in:
-    - [ ] `ili9341_display_controller.sv`
-    - [ ] `ft6206_controller.sv`
-- [ ] Design and implement a main FSM that interfaces with a video RAM.
+        - Note: After struggling to implement a SPI controller ourselves, we had to readjust our plan to use the solution SPI controller. To learn from
+        professional code, we fully commented this file and gained an detailed, low-level understanding of the script. Last minute, we decided to pivot
+        and employ the solution i2c controller file, as we realised that we both were already somewhat familiar with SPI before this lab, and, therefore,
+        using i2c would better suit our learning goals. Although we did not comment the solution i2c controller, we looked over the code together and
+        talked through each line. We also spoke with Avi and got approval for commenting the SPI controller but using the i2c controller.
+    - [X] i2c Controller for touchscreen
+- [X] Learning from Professional Code: In your own words, describe the FSMs in:
+    - [X] `ili9341_display_controller.sv`
+        - We commented this file!
+    - [X] `ft6206_controller.sv`
+        - We commented this file!
+- [X] Design and implement a main FSM that interfaces with a video RAM.
 
 # Part 1) Sequential Logic & FPGA Programming
 Let's start with a simple example to make sure we all have the tools working and can effectively design, simulate, and synthesize combination logic and simple FSMs.
@@ -36,12 +43,15 @@ Let's start with a simple example to make sure we all have the tools working and
 Start by trying to implement a pulse generator - this is a module that outputs high for exactly one clock cycle out of every N ticks. Implement your code in `pulse_generator.sv`.
 
 Get an instructor sign off by showing your working `gtkwave` simulation before proceeding!
+![](docs/pulse_generator.jpg)
 
 ## PWM Module
 Pulse Width Modulation, or PWM is the first and easiest way of trying to get an analog or continuous value from a digital signal. Design and simulate an implementation in `pwm.sv`. Like before, show your working simulation in `gtkwave` before proceeding.
+![](docs/pwm.jpg)
 
 ## Triangle Generator
 A triangle or sawtooth generator is a counter that starts at zero, counts up to its maximum value, then counts down back to zero, etc. Implement a simple FSM, and show your waveforms to an instructor before proceeding.
+![](docs/triangle_generator.jpg)
 
 ## Putting it all together
 Last, we're going to showcase the three above modules in `main.sv` by fading the LEDs in and out. To do this we'll use `pulse_generators` to generate some slower "step" signals that keep things changing at human rates. Next we'll use our `triangle_generator` to make a signal we can use to brighten and dim our LEDs. Finally, the `pwm` modules actually drive the LEDs.
@@ -59,7 +69,6 @@ There are two tracks for this portion - either working with the (a) display XOR 
 
 Writing sequential testbenches is difficult, so the tests for this are already provided.
 
-
 ## 2a) Display Controller - Sending Serialized Data over SPI
 Your goal for this section is to finish implementing `spi_controller.sv`, and to read through `ili9341_display_controller.sv` and understand it enough to change the test pattern. NOTE - you only need to implement the `WRITE_8` and `WRITE_16` modes! 
 
@@ -69,6 +78,8 @@ Once you have it working, make sure that the ILI9341 display controller in main.
 
 Finally, edit `ili9341_display_controller.sv`'s `display_color_logic` section to change the test pattern in any way. Bonus - make the test pattern change over time by adding an FSM of some sort!
 
+[**FSM Block Diagram**]
+
 ## 2b) Touchscreen Controller - Receiving Serialized Data over i2c
 This part is a little more challenging. 
 Your goal for this selection is to finish implementing `i2c_controller.sv` so that we can talk to the FT6206 touch screen controller on the display. Technically to use i2c you have to both send and receive serial data, but the focus of this is on receiving data from the capacitive touch sensor. There is a suggested `i2c_state_t` in `i2c_types.sv` - I encourage building your high level FSM around that. 
@@ -77,8 +88,15 @@ i2c can be a bit tricky of a protocol, so the real proof is if it works in synth
 
 # Part 3) Interfacing with VRAM
 Design and implement an FSM that can:
-- [ ] clear memory on button press.
-- [ ] update memory based on touch values.
-- [ ] emit draw signals based on memory.
-- [ ] bonus: add colors, different modes.
-- [ ] stretch bonus: add fonts/textures! (hint, creating more ROMs (see `generate_memories.py` is a good way to approach this).
+- [X] clear memory on button press.
+- [X] update memory based on touch values.
+- [X] emit draw signals based on memory.
+- [] bonus: add colors, different modes.
+- [] stretch bonus: add fonts/textures! (hint, creating more ROMs (see `generate_memories.py` is a good way to approach this).
+
+[**FSM Block Diagram**]
+
+Please see the below images of our breadboard circuit, final etch-a-sketch with a drawing, and a demonstration video!
+![](docs/comparchlab2circuit.jpg)
+![](docs/comparchlab2etchasketch.jpg)
+[**View Our Demonstration Video of Our Working Etch-A-Sketch Here!**](https://youtu.be/M4WRvPd6Vxw)

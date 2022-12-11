@@ -78,6 +78,7 @@ Once you have it working, make sure that the ILI9341 display controller in main.
 
 Finally, edit `ili9341_display_controller.sv`'s `display_color_logic` section to change the test pattern in any way. Bonus - make the test pattern change over time by adding an FSM of some sort!
 
+See below for a block diagram of the spi controller: 
 ![](docs/spi_controller.png)
 
 ## 2b) Touchscreen Controller - Receiving Serialized Data over i2c
@@ -94,6 +95,7 @@ Design and implement an FSM that can:
 - [] bonus: add colors, different modes.
 - [] stretch bonus: add fonts/textures! (hint, creating more ROMs (see `generate_memories.py` is a good way to approach this).
 
+See below for the state transition diagram and block diagram of our FSM. 
 ![](docs/main_fsm.png)
 
 Please see the below images of our breadboard circuit, final etch-a-sketch with a drawing, and a demonstration video!

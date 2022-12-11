@@ -85,7 +85,7 @@ alu_behavioural ALU (
 // Implement your multicycle rv32i CPU here!
 
 //Mux A 
-enum logic [1:0] {ALU_SRC_PC_A, ALU_SRC_PC_A_OLD, ALU_SRC_RF_A} alu_src_a; 
+enum logic [1:0] {ALU_SRC_PC_A,ALU_SRC_RF_A, ALU_SRC_PC_A_OLD} alu_src_a; 
 always_comb begin: ALU_A_MUX
     case (alu_src_a)
         ALU_SRC_PC_A: src_a = PC; 
@@ -96,7 +96,7 @@ always_comb begin: ALU_A_MUX
 end
 
 //Mux B
-enum logic [1:0] {ALU_SRC_4_B, ALU_SRC_IMM_B, ALU_SRC_RF_B} alu_src_b; 
+enum logic [1:0] {ALU_SRC_RF_B, ALU_SRC_IMM_B, ALU_SRC_4_B} alu_src_b; 
 always_comb begin: ALU_B_MUX
     case (alu_src_b)
         ALU_SRC_RF_B: src_b = reg_B; 
@@ -430,10 +430,10 @@ always_comb: begin
       result_src      = RESULT_SRC_ALU;
       IR_write        = 0;
       alu_src_a       = ALU_SRC_RF_A;
-      alu_src_b       = ALU_SRC_RF_B;
+      alu_src_b       = ALU_SRC_IMM_B;
       alu_control     = ALU_INVALID;
       ALU_ena         = 0;
-      data_memory_ena = 0;
+      data_memory_ena = 1;
       mem_src         = MEM_ADR_SRC_ALU_RESULT;
     end
     S_MEMWB: begin

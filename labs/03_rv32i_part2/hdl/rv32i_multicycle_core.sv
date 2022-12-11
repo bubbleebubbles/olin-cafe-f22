@@ -85,38 +85,26 @@ alu_behavioural ALU (
 // Implement your multicycle rv32i CPU here!
 
 //Mux A 
-enum logic [1:0] {ALU_SRC_A_PC, ALU_SRC_A_PC_OLD, ALU_SRC_A_RA} alu_src_a; 
-always_comb begin: ALU_MUX_A
+enum logic [1:0] {ALU_SRC_PC_A, ALU_SRC_PC_A_OLD, ALU_SRC_RF_A} alu_src_a; 
+always_comb begin: ALU_A_MUX
     case (alu_src_a)
-        ALU_SRC_A_PC: src_a = PC; 
-        ALU_SRC_A_RA: src_a = reg_A; 
-        ALU_SRC_A_PC_OLD: src_a = PC_old; 
+        ALU_SRC_PC_A: src_a = PC; 
+        ALU_SRC_RF_A: src_a = reg_A; 
+        ALU_SRC_PC_A_OLD: src_a = PC_old; 
         default: src_a = 0; 
     endcase
 end
-
-
-
 
 //Mux B
-enum logic [1:0] {ALU_SRC_B_4, ALU_SRC_B_IMM_EXT, ALU_SRC_B_RB} alu_src_b; 
-always_comb begin: ALU_MUX_B
+enum logic [1:0] {ALU_SRC_4_B, ALU_SRC_IMM_EXTEND_B, ALU_SRC_RF_B} alu_src_b; 
+always_comb begin: ALU_B_MUX
     case (alu_src_b)
-        ALU_SRC_B_RB: src_b = reg_B; 
-        ALU_SRC_B_IMM_EXT: src_b = immediate_extended ; 
-        ALU_SRC_B_4: src_b = 32'd4; 
+        ALU_SRC_RF_B: src_b = reg_B; 
+        ALU_SRC_IMM_EXTEND_B: src_b = immediate_extended ; 
+        ALU_SRC_4_B: src_b = 32'd4; 
         default: src_a = 0; 
     endcase
 end
-
-//Non-architectural Register
-//Memory Register
-logic mem_data_ena; 
-wire [31:0] mem_data;
-register #(.N(32)) MEM_DATA_REGISTER(
-    .clk(clk), .rst(rst), .ena(mem_data__ena), .d(mem_rd_data), .q(mem_data)
-); 
-
 
 //Memory Mux 
 enum logic [1:0] {MEM_ADR_SRC_PC, MEM_ADR_SRC_ALU_RESULT} mem_adr_src
@@ -127,16 +115,31 @@ always_comb begin: MEMORY_ADR_MUX
     endcase
 end
 
-//Non-architectural register 
-//ALU Result Register
+//Non-architectural registers
+//IR write register
+logic IR_write; 
+wire [31:0] instruction;
+register #(.N(32)) INSTRUCTION_REGISTER(
+    .clk(clk), .rst(rst), .ena(IR_write), .d(mem_rd_data), .q(instruction)
+); 
+
+//ALU result register
 logic ALU_ena; 
-wire [31:0] alu_last;
-register #(.N(32)) ALU_REGISTER(
+wire [31:0] alu_last; 
+register #(.N(32)) ALU_RESULT_REGISTER(
     .clk(clk), .rst(rst), .ena(alu_ena), .d(alu_result), .q(alu_last)
+); 
+
+//Data memory register
+logic data_memory_ena; 
+wire [31:0] data_memory; 
+register #(.N(32)) DATA_MEMORY_REGISTER(
+    .clk(clk), .rst(rst), .ena(data_memory_ena), .d(mem_rd_data), .q(data_memory)
 ); 
 
 //Output Mux 
 enum logic [1:0] {RESULT_SRC_ALU, RESULT_SRC_MEM_DATA, RESULT_SRC_ALU_LAST} result_src; 
+logic [31:0] result;
 always_comb begin: ALU_RESULT_MUX
     case(result_src)
         RESULT_SRC_ALU: result = alu_result; 
@@ -151,13 +154,32 @@ always_comb begin: RESULT_ALIASES //for things that are connected/same value
     rfile_wr_data = result; 
 end
 
-always_comb begin: INSTRUCTION_TYPES
-rtype = (op == OP_RTYPE); 
-itype = (op == OP_ITYPE); 
-stype = (op == OP_STYPE); 
-btype = (op == OP_BTYPE); 
-ltype = (op == OP_LTYPE); 
-jtype = (op == OP_JAL) | (op == OP_JALR)
+// Decoding instructions
+logic [6:0] op;
+logic [2:0] funct3;
+logic [6:0] funct7;
+logic [31:0] immediate_extended;
+logic rtype;
+logic itype;
+logic btype;
+logic ltype;
+logic jtype;
+logic stype;
+
+always_comb begin: INSTRUCTION_BREAKDOWN
+
+  // type of intruction
+  rtype = (op == OP_RTYPE); 
+  itype = (op == OP_ITYPE); 
+  stype = (op == OP_STYPE); 
+  btype = (op == OP_BTYPE); 
+  ltype = (op == OP_LTYPE); 
+  jtype = (op == OP_JAL) | (op == OP_JALR)
+
+  // instruction breakdown
+  
+  // immediates
+
 end 
 
 logic branch; // check if using
@@ -260,8 +282,8 @@ always_comb: begin
       $display("Please implement branches")
       next_state = S_ERROR;
       */
-      alu_src_a = ALU_SRC_A_RA;
-      alr_src_b = ALU_SRC_B_RB;
+      alu_src_a = ALU_SRC_RF_A;
+      alr_src_b = ALU_SRC_RF_B;
       ri_alu_control = ALU_SUB;
       result_src = RESULT_SRC_ALU;
       next_state = S_FETCH;

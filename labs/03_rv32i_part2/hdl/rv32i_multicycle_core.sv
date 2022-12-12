@@ -35,13 +35,6 @@ register #(.N(32)) PC_OLD_REGISTER(
   .clk(clk), .rst(rst), .ena(PC_ena), .d(PC), .q(PC_old)
 );
 
-logic [31:0] IR; //instruction 
-logic IR_write; // IR's only control signal
-register #(.N(32)) INSTRUCTION_REGISTER(
-  .clk(clk), .rst(rst), .ena(IR_write), .d(mem_rd_data), .q(IR)
-);
-
-
 //  an example of how to make named inputs for a mux:
 /*
     enum logic {MEM_SRC_PC, MEM_SRC_RESULT} mem_src;
@@ -68,11 +61,11 @@ register_file REGISTER_FILE(
 //Non-architectural register
 wire [31:0] reg_A, reg_B; 
 
-register #(.N(32), REGISTER_A (
+register #(.N(32)) REGISTER_A(
   .clk(clk), .rst(rst), .ena(1'b1), .d(reg_data1), .q(reg_A)
 );
 
-register #(.N(32), REGISTER_B (
+register #(.N(32)) REGISTER_B (
   .clk(clk), .rst(rst), .ena(1'b1), .d(reg_data1), .q(reg_B)
 );
 
@@ -116,7 +109,7 @@ always_comb begin: ALU_B_MUX
 end
 
 //Memory Mux 
-enum logic [1:0] {MEM_ADR_SRC_PC, MEM_ADR_SRC_ALU_RESULT} mem_adr_src
+enum logic [1:0] {MEM_ADR_SRC_PC, MEM_ADR_SRC_ALU_RESULT} mem_adr_src; 
 always_comb begin: MEMORY_ADR_MUX
     case(mem_adr_src)
         MEM_ADR_SRC_PC: mem_adr_src = PC; 

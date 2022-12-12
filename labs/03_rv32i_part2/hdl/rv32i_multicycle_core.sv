@@ -19,6 +19,7 @@ input  wire clk, rst, ena; // <- worry about implementing the ena signal last.
 output logic [31:0] mem_addr, mem_wr_data;
 input   wire [31:0] mem_rd_data;
 output logic mem_wr_ena;
+output logic [31:0] instructions_completed; 
 
 // Program Counter
 output wire [31:0] PC;
@@ -33,6 +34,14 @@ register #(.N(32), .RESET(PC_START_ADDRESS)) PC_REGISTER (
 register #(.N(32)) PC_OLD_REGISTER(
   .clk(clk), .rst(rst), .ena(PC_ena), .d(PC), .q(PC_old)
 );
+
+logic [31:0] IR; //instruction 
+logic IR_write; // IR's only control signal
+register #(.N(32)) INSTRUCTION_REGISTER(
+  .clk(clk), .rst(rst), .ena(IR_write), .d(mem_rd_data), .q(IR)
+);
+
+
 //  an example of how to make named inputs for a mux:
 /*
     enum logic {MEM_SRC_PC, MEM_SRC_RESULT} mem_src;

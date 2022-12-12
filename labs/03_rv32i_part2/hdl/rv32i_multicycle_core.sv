@@ -19,7 +19,6 @@ input  wire clk, rst, ena; // <- worry about implementing the ena signal last.
 output logic [31:0] mem_addr, mem_wr_data;
 input   wire [31:0] mem_rd_data;
 output logic mem_wr_ena;
-output logic [31:0] instructions_completed; 
 
 // Program Counter
 output wire [31:0] PC;
@@ -126,17 +125,17 @@ register #(.N(32)) INSTRUCTION_REGISTER(
 ); 
 
 //ALU result register
-logic ALU_ena; 
+logic alu_ena; 
 wire [31:0] alu_last; 
 register #(.N(32)) ALU_RESULT_REGISTER(
     .clk(clk), .rst(rst), .ena(alu_ena), .d(alu_result), .q(alu_last)
 ); 
 
 //Data memory register
-logic data_memory_ena; 
-wire [31:0] data_memory; 
+logic mem_data_ena;
+wire [31:0] mem_data; 
 register #(.N(32)) DATA_MEMORY_REGISTER(
-    .clk(clk), .rst(rst), .ena(data_memory_ena), .d(mem_rd_data), .q(data_memory)
+    .clk(clk), .rst(rst), .ena(mem_data_ena), .d(mem_rd_data), .q(mem_data)
 ); 
 
 //Output Mux 

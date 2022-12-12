@@ -19,7 +19,7 @@ input  wire clk, rst, ena; // <- worry about implementing the ena signal last.
 output logic [31:0] mem_addr, mem_wr_data;
 input   wire [31:0] mem_rd_data;
 output logic mem_wr_ena;
-output logic instructions_completed; 
+output logic [31:0] instructions_completed; 
 
 
 // Program Counter
@@ -105,7 +105,7 @@ always_comb begin: ALU_B_MUX
         ALU_SRC_RF_B: src_b = reg_B; 
         ALU_SRC_IMM_B: src_b = immediate_extended ; 
         ALU_SRC_4_B: src_b = 32'd4; 
-        default: src_a = 0; 
+        default: src_b = 0; 
     endcase
 end
 
@@ -113,8 +113,8 @@ end
 enum logic [1:0] {MEM_SRC_PC, MEM_SRC_RESULT} mem_src; 
 always_comb begin: MEMORY_ADR_MUX
     case(mem_src)
-        MEM_SRC_PC: mem_src = PC; 
-        MEM_SRC_RESULT: mem_src = result;//ALU Result mux result 
+        MEM_SRC_PC: mem_addr = PC; 
+        MEM_SRC_RESULT: mem_addr = result;//ALU Result mux result 
     endcase
 end
 

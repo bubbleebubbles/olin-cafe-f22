@@ -7,7 +7,7 @@
 module rv32i_multicycle_core(
   clk, rst, ena,
   mem_addr, mem_rd_data, mem_wr_data, mem_wr_ena,
-  PC
+  PC, instructions_completed
 );
 
 parameter PC_START_ADDRESS=0;
@@ -19,6 +19,8 @@ input  wire clk, rst, ena; // <- worry about implementing the ena signal last.
 output logic [31:0] mem_addr, mem_wr_data;
 input   wire [31:0] mem_rd_data;
 output logic mem_wr_ena;
+output logic instructions_completed; 
+
 
 // Program Counter
 output wire [31:0] PC;

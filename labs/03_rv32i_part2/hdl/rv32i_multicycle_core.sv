@@ -110,11 +110,11 @@ always_comb begin: ALU_B_MUX
 end
 
 //Memory Mux 
-enum logic [1:0] {MEM_ADR_SRC_PC, MEM_ADR_SRC_ALU_RESULT} mem_adr_src; 
+enum logic [1:0] {MEM_SRC_PC, MEM_SRC_RESULT} mem_src; 
 always_comb begin: MEMORY_ADR_MUX
-    case(mem_adr_src)
-        MEM_ADR_SRC_PC: mem_adr_src = PC; 
-        MEM_ADR_SRC_ALU_RESULT: mem_adr_src = result;//ALU Result mux result 
+    case(mem_src)
+        MEM_SRC_PC: mem_src = PC; 
+        MEM_SRC_RESULT: mem_src = result;//ALU Result mux result 
     endcase
 end
 
@@ -309,7 +309,7 @@ always_comb begin: NEXT_STATE_LOGIC
       next_state = S_ERROR;
       */
         alu_src_a = ALU_SRC_RF_A;
-        alr_src_b = ALU_SRC_RF_B;
+        alu_src_b = ALU_SRC_RF_B;
         ri_alu_control = ALU_SUB;
         result_src = RESULT_SRC_ALU;
         next_state = S_FETCH;
@@ -346,7 +346,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
         alu_src_a       = ALU_SRC_PC_A;
         alu_src_b       = ALU_SRC_4_B;
         alu_control     = ALU_ADD;
-        ALU_ena         = 0;
+        alu_ena         = 0;
         data_memory_ena = 0;
         mem_src         = MEM_ADR_SRC_PC;
     end
@@ -359,7 +359,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
         alu_src_a       = ALU_SRC_RF_A;
         alu_src_b       = ALU_SRC_RF_B;
         alu_control     = ALU_INVALID;
-        ALU_ena         = 0;
+        alu_ena         = 0;
         data_memory_ena = 0;
         mem_src         = MEM_ADR_SRC_PC;
     end
@@ -372,7 +372,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_a       = ALU_SRC_RF_A;
       alu_src_b       = ALU_SRC_RF_B;
       alu_control     = ri_alu_control;
-      ALU_ena         = 0;
+      alu_ena         = 0;
       data_memory_ena = 0;
       mem_src         = MEM_ADR_SRC_PC;
     end
@@ -385,7 +385,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_a       = ALU_SRC_RF_A;
       alu_src_b       = ALU_SRC_IMM_B;
       alu_control     = ri_alu_control;
-      ALU_ena         = 1;
+      alu_ena         = 1;
       data_memory_ena = 0;
       mem_src         = MEM_ADR_SRC_PC;
     end
@@ -398,7 +398,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_a       = ALU_SRC_RF_A;
       alu_src_b       = ALU_SRC_RF_B;
       alu_control     = ALU_INVALID;
-      ALU_ena         = 0;
+      alu_ena         = 0;
       data_memory_ena = 0;
       mem_src         = MEM_ADR_SRC_PC;
     end
@@ -411,7 +411,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_a       = ALU_SRC_RF_A;
       alu_src_b       = ALU_SRC_IMM_B;
       alu_control     = ALU_ADD;
-      ALU_ena         = 1;
+      alu_ena         = 1;
       data_memory_ena = 0;
       mem_src         = MEM_ADR_SRC_ALU_RESULT;
     end
@@ -424,7 +424,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_a       = ALU_SRC_RF_A;
       alu_src_b       = ALU_SRC_IMM_B;
       alu_control     = ALU_INVALID;
-      ALU_ena         = 1;
+      alu_ena         = 1;
       data_memory_ena = 0;
       mem_src         = MEM_ADR_SRC_PC;
     end
@@ -437,7 +437,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_a       = ALU_SRC_RF_A;
       alu_src_b       = ALU_SRC_IMM_B;
       alu_control     = ALU_INVALID;
-      ALU_ena         = 0;
+      alu_ena         = 0;
       data_memory_ena = 1;
       mem_src         = MEM_ADR_SRC_ALU_RESULT;
     end
@@ -450,7 +450,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_a       = ALU_SRC_RF_A;
       alu_src_b       = ALU_SRC_IMM_B;
       alu_control     = ALU_INVALID;
-      ALU_ena         = 1;
+      alu_ena         = 1;
       data_memory_ena = 0;
       mem_src         = MEM_ADR_SRC_ALU_RESULT;
     end
@@ -463,7 +463,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_a       = ALU_SRC_RF_A;
       alu_src_b       = ALU_SRC_RF_B;
       alu_control     = ALU_INVALID;
-      ALU_ena         = 0;
+      alu_ena         = 0;
       data_memory_ena = 0;
       mem_src         = MEM_ADR_SRC_PC;
     end

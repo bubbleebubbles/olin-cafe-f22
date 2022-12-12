@@ -347,7 +347,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
         alu_src_b       = ALU_SRC_4_B;
         alu_control     = ALU_ADD;
         alu_ena         = 0;
-        data_memory_ena = 0;
+        mem_data_ena = 0;
         mem_src         = MEM_ADR_SRC_PC;
     end
     S_DECODE: begin
@@ -360,7 +360,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
         alu_src_b       = ALU_SRC_RF_B;
         alu_control     = ALU_INVALID;
         alu_ena         = 0;
-        data_memory_ena = 0;
+        mem_data_ena = 0;
         mem_src         = MEM_ADR_SRC_PC;
     end
     S_EXECUTER: begin
@@ -373,7 +373,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_b       = ALU_SRC_RF_B;
       alu_control     = ri_alu_control;
       alu_ena         = 0;
-      data_memory_ena = 0;
+      mem_data_ena = 0;
       mem_src         = MEM_ADR_SRC_PC;
     end
     S_EXECUTEI: begin
@@ -386,7 +386,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_b       = ALU_SRC_IMM_B;
       alu_control     = ri_alu_control;
       alu_ena         = 1;
-      data_memory_ena = 0;
+      mem_data_ena = 0;
       mem_src         = MEM_ADR_SRC_PC;
     end
     S_ALUWB: begin
@@ -399,7 +399,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_b       = ALU_SRC_RF_B;
       alu_control     = ALU_INVALID;
       alu_ena         = 0;
-      data_memory_ena = 0;
+      mem_data_ena = 0;
       mem_src         = MEM_ADR_SRC_PC;
     end
     S_MEMADR: begin
@@ -412,7 +412,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_b       = ALU_SRC_IMM_B;
       alu_control     = ALU_ADD;
       alu_ena         = 1;
-      data_memory_ena = 0;
+      mem_data_ena = 0;
       mem_src         = MEM_ADR_SRC_ALU_RESULT;
     end
     S_MEMREAD: begin
@@ -425,7 +425,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_b       = ALU_SRC_IMM_B;
       alu_control     = ALU_INVALID;
       alu_ena         = 1;
-      data_memory_ena = 0;
+      mem_data_ena = 0;
       mem_src         = MEM_ADR_SRC_PC;
     end
     S_MEMWRITE: begin // check
@@ -438,7 +438,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_b       = ALU_SRC_IMM_B;
       alu_control     = ALU_INVALID;
       alu_ena         = 0;
-      data_memory_ena = 1;
+      mem_data_ena = 1;
       mem_src         = MEM_ADR_SRC_ALU_RESULT;
     end
     S_MEMWB: begin
@@ -451,7 +451,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_b       = ALU_SRC_IMM_B;
       alu_control     = ALU_INVALID;
       alu_ena         = 1;
-      data_memory_ena = 0;
+      mem_data_ena = 0;
       mem_src         = MEM_ADR_SRC_ALU_RESULT;
     end
     default: begin
@@ -464,7 +464,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_b       = ALU_SRC_RF_B;
       alu_control     = ALU_INVALID;
       alu_ena         = 0;
-      data_memory_ena = 0;
+      mem_data_ena = 0;
       mem_src         = MEM_ADR_SRC_PC;
     end
   endcase

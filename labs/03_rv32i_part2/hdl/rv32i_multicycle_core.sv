@@ -177,7 +177,7 @@ always_comb begin: INSTRUCTION_BREAKDOWN
   stype = (op == OP_STYPE); 
   btype = (op == OP_BTYPE); 
   ltype = (op == OP_LTYPE); 
-  jtype = (op == OP_JAL) | (op == OP_JALR)
+  jtype = (op == OP_JAL) | (op == OP_JALR); 
 
   // instruction breakdown
   op=instruction[6:0];
@@ -237,14 +237,14 @@ always_comb begin: ALU_DECODE_INSTRUCTION
                 ri_alu_control = ALU_SRA;
             else 
                 ri_alu_control = ALU_SRL;
+        end 
         FUNCT3_BNE: begin
-          if(cond = ~1b'0)
+          if(cond != 1'b0)
             PC_ena = 1;
         end
         FUNCT3_BEQ: begin
-          if(cond = 1b'0)
+          if(cond == 1'b0)
             PC_ena = 1;
-        end
         end 
     endcase 
 end 
@@ -252,18 +252,19 @@ end
 
 // Main FSM
 
-typedef enum [3:0] {S_FETCH, S_DECODE, S_MEMADR, S_EXECUTER, S_EXECUTEI, S_JUMP, S_BRANCH, S_MEMREAD, S_ALUWB, S_MEMREAD, S_MEMWRITE, S_MEMWB, S_BEQ, S_JAL, S_JALR, S_ERROR=4'hF } statetype;
+enum logic [3:0] {S_FETCH, S_DECODE, S_MEMADR, S_EXECUTER, S_EXECUTEI, S_JUMP, S_BRANCH, S_ALUWB, S_MEMREAD, S_MEMWRITE, S_MEMWB, S_BEQ, S_JAL, S_JALR, S_ERROR=4'hF } state, next_state;
 
-statetype state, next_state;
+
 logic [14:0] controls;
 
 // State register
 always @(posedge clk or posedge rst) begin : FSM_MULTICYCLE
   if (rst) state <= S_FETCH;
   else state <= next_state;
+end
 
 // Logic for next state
-always_comb: begin
+always_comb begin: NEXT_STATE_LOGIC
   case(state)
     default: next_state = S_FETCH;
     S_FETCH: next_state = S_DECODE;
@@ -284,11 +285,12 @@ always_comb: begin
       endcase
     end
     S_MEMADR: begin
-      case(op)
-        default: next_state = S_ERROR;
-        if (op[5]) next_state = S_MEMWRITE; // sw
-        else next_state = S_MEMREAD; // lw
-      endcase
+        if (op[5]==1'b1)
+            next_state = S_MEMWRITE; // sw
+        else if (op[5]==1'b0) 
+            next_state = S_MEMREAD; // lw
+        else
+            next_state = S_ERROR; 
     end
     S_MEMREAD: next_state = S_MEMWB;
     S_EXECUTEI, S_EXECUTER, S_JAL: next_state = S_ALUWB;
@@ -305,18 +307,18 @@ always_comb: begin
       $display("Please implement branches")
       next_state = S_ERROR;
       */
-      alu_src_a = ALU_SRC_RF_A;
-      alr_src_b = ALU_SRC_RF_B;
-      ri_alu_control = ALU_SUB;
-      result_src = RESULT_SRC_ALU;
-      next_state = S_FETCH;
+        alu_src_a = ALU_SRC_RF_A;
+        alr_src_b = ALU_SRC_RF_B;
+        ri_alu_control = ALU_SUB;
+        result_src = RESULT_SRC_ALU;
+        next_state = S_FETCH;
     end
+    endcase 
 end
 
-
 // state output logic
-always_comb: begin
-  case(state)
+always_comb begin: STATE_OUTPUT_LOGIC
+    case(state)
     /*
     // AdrSrc_IRWrite_ALUSrcA_ALUSrcB_ALUOp_ResultSrc_PCUpdate_RegWrite_MemWrite_Branch
     S_FETCH:    controls=15'b0_1_00_10_00_10_1_0_0_0;
@@ -335,30 +337,30 @@ always_comb: begin
     */
 
     S_FETCH: begin
-      mem_wr_ena      = 0;
-      reg_write       = 0;
-      PC_ena          = 1;
-      result_src      = RESULT_SRC_ALU;
-      IR_write        = 1;
-      alu_src_a       = ALU_SRC_PC_A;
-      alu_src_b       = ALU_SRC_4_B;
-      alu_control     = ALU_ADD;
-      ALU_ena         = 0;
-      data_memory_ena = 0;
-      mem_src         = MEM_ADR_SRC_PC;
+        mem_wr_ena      = 0;
+        reg_write       = 0;
+        PC_ena          = 1;
+        result_src      = RESULT_SRC_ALU;
+        IR_write        = 1;
+        alu_src_a       = ALU_SRC_PC_A;
+        alu_src_b       = ALU_SRC_4_B;
+        alu_control     = ALU_ADD;
+        ALU_ena         = 0;
+        data_memory_ena = 0;
+        mem_src         = MEM_ADR_SRC_PC;
     end
     S_DECODE: begin
-      mem_wr_ena      = 0;
-      reg_write       = 0;
-      PC_ena          = 0;
-      result_src      = RESULT_SRC_ALU;
-      IR_write        = 0;
-      alu_src_a       = ALU_SRC_RF_A;
-      alu_src_b       = ALU_SRC_RF_B;
-      alu_control     = ALU_INVALID;
-      ALU_ena         = 0;
-      data_memory_ena = 0;
-      mem_src         = MEM_ADR_SRC_PC;
+        mem_wr_ena      = 0;
+        reg_write       = 0;
+        PC_ena          = 0;
+        result_src      = RESULT_SRC_ALU;
+        IR_write        = 0;
+        alu_src_a       = ALU_SRC_RF_A;
+        alu_src_b       = ALU_SRC_RF_B;
+        alu_control     = ALU_INVALID;
+        ALU_ena         = 0;
+        data_memory_ena = 0;
+        mem_src         = MEM_ADR_SRC_PC;
     end
     S_EXECUTER: begin
       mem_wr_ena      = 0;

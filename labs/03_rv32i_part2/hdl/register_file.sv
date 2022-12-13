@@ -2,7 +2,7 @@
 `timescale 1ns/1ps
 
 module register_file(
-  clk, // wtf, no rst?  // avi - makes debugging register writes easier
+  clk, rst, // wtf, no rst?  // avi - makes debugging register writes easier
   wr_ena, wr_addr, wr_data,
   rd_addr0, rd_data0,
   rd_addr1, rd_data1
@@ -10,6 +10,7 @@ module register_file(
 // Not parametrizing, these widths are defined by the RISC-V Spec!
 
 input wire clk;
+input wire rst; 
 
 // Write channel
 input wire wr_ena;

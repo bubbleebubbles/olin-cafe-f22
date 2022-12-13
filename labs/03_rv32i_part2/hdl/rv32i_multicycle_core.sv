@@ -454,6 +454,33 @@ always_comb begin: STATE_OUTPUT_LOGIC
       mem_data_ena = 0;
       mem_src         = MEM_SRC_RESULT;
     end
+    S_BEQ: begin 
+        mem_wr_ena      = 0;
+        reg_write       = 0;
+        PC_ena          = 0;
+        result_src      = RESULT_SRC_ALU;
+        IR_write        = 0;
+        alu_src_a       = ALU_SRC_RF_A;
+        alu_src_b       = ALU_SRC_IMM_B;
+        alu_control     = ALU_INVALID;
+        alu_ena         = 1;
+        mem_data_ena = 0;
+        mem_src         = MEM_SRC_RESULT;
+    end
+     S_BNE: begin 
+        mem_wr_ena      = 0;
+        reg_write       = 0;
+        PC_ena          = 0;
+        result_src      = RESULT_SRC_ALU;
+        IR_write        = 0;
+        alu_src_a       = ALU_SRC_RF_A;
+        alu_src_b       = ALU_SRC_IMM_B;
+        alu_control     = ALU_INVALID;
+        alu_ena         = 1;
+        mem_data_ena = 0;
+        mem_src         = MEM_SRC_RESULT;
+    end
+    
     default: begin
       mem_wr_ena      = 0;
       reg_write       = 0;

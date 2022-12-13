@@ -158,6 +158,7 @@ always_comb begin: RESULT_ALIASES //for things that are connected/same value
 end
 
 // Decoding instructions
+logic [1:0] alu_op;
 logic [6:0] op;
 logic [2:0] funct3;
 logic [6:0] funct7;
@@ -217,11 +218,12 @@ logic [2:0] ImmSrc;
 */
 logic cond; // cond is 1 when condition for branch met
 
+logic sub_true; 
 //ALU Decoding Types of Instructions 
 always_comb begin: ALU_DECODE_INSTRUCTION
     case(funct3)
         FUNCT3_ADD: begin
-            if(funct7[5] & rtype)
+            if(funct7[5] && op==OP_RTYPE)
                 ri_alu_control = ALU_SUB; 
             else
                 ri_alu_control = ALU_ADD; 
@@ -372,7 +374,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_a       = ALU_SRC_RF_A;
       alu_src_b       = ALU_SRC_RF_B;
       alu_control     = ri_alu_control;
-      alu_ena         = 0;
+      alu_ena         = 1;
       mem_data_ena = 0;
       mem_src         = MEM_SRC_PC;
     end
@@ -424,7 +426,7 @@ always_comb begin: STATE_OUTPUT_LOGIC
       alu_src_a       = ALU_SRC_RF_A;
       alu_src_b       = ALU_SRC_IMM_B;
       alu_control     = ALU_INVALID;
-      alu_ena         = 1;
+      alu_ena         = 0;
       mem_data_ena = 0;
       mem_src         = MEM_SRC_PC;
     end
@@ -454,6 +456,33 @@ always_comb begin: STATE_OUTPUT_LOGIC
       mem_data_ena = 0;
       mem_src         = MEM_SRC_RESULT;
     end
+   // S_BEQ: begin 
+    //    mem_wr_ena      = 0;
+     //   reg_write       = 0;
+     //   PC_ena          = 0;
+     //   result_src      = RESULT_SRC_ALU;
+     //   IR_write        = 0;
+     //   alu_src_a       = ALU_SRC_RF_A;
+     //   alu_src_b       = ALU_SRC_IMM_B;
+     //   alu_control     = ALU_INVALID;
+     //   alu_ena         = 1;
+     //   mem_data_ena = 0;
+    //    mem_src         = MEM_SRC_RESULT;
+   // end
+    // S_BNE: begin 
+     //   mem_wr_ena      = 0;
+      //  reg_write       = 0;
+       // PC_ena          = 0;
+       // result_src      = RESULT_SRC_ALU;
+       // IR_write        = 0;
+       // alu_src_a       = ALU_SRC_RF_A;
+       // alu_src_b       = ALU_SRC_IMM_B;
+       // alu_control     = ALU_INVALID;
+        //alu_ena         = 1;
+       // mem_data_ena = 0;
+       // mem_src         = MEM_SRC_RESULT;
+   // end
+    
     default: begin
       mem_wr_ena      = 0;
       reg_write       = 0;

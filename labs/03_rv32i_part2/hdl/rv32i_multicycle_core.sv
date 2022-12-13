@@ -171,9 +171,11 @@ end
 
 //Non-architectural registers
 //IR write register
+
 register #(.N(32)) INSTRUCTION_REGISTER(
     .clk(clk), .rst(rst), .ena(ir_write), .d(mem_rd_data), .q(instr)
 ); 
+
 
 //ALU result register
 logic alu_ena; 
@@ -394,40 +396,34 @@ always_ff @( posedge clk ) begin
     mem_wr_data <= reg_data2;
     alu_out <= alu_result;
     data <= mem_rd_data;
-    instr <= ir_write ? mem_rd_data : instr;
-  end 
-end
-
-always_ff @(posedge clk) begin
-  if (rst) begin
-    state <= S_FETCH;
-  end else if (~ena) begin
-    // Do nothing if ena is disabled
-  end else case(state)
-      S_FETCH: state <= S_DECODE;
-      S_DECODE: begin
-      case(op)
+   // instr <= ir_write ? mem_rd_data : instr;
+      case(state)
+        S_FETCH: state <= S_DECODE;
+        S_DECODE: begin
+            case(op)
         //replace with variables from defines file 
-        OP_LTYPE: state <= S_MEMADR; // lw
-        OP_STYPE: state <= S_MEMADR; // sw
-        OP_RTYPE: state <= S_EXECUTER; // R-type
-        OP_ITYPE: state <= S_EXECUTEI; // I-type
-        OP_JAL: state <= S_JAL; // jal
-        OP_JALR: state <= S_JALR; // jalr
-        OP_BTYPE: state <= S_BRANCH; // beq, bne
-      endcase
-      end
-      S_MEMADR: begin
-        if (op[5]==1'b1)
-            state <= S_MEMWRITE; // sw
-        else if (op[5]==1'b0) 
-            state <= S_MEMREAD; // lw
-        else
-            state <= S_ERROR;
-      end
-      S_MEMREAD: state <= S_MEMWB;
-      S_EXECUTEI, S_EXECUTER, S_JAL, S_JALR: state <= S_ALUWB;
-      S_ALUWB, S_MEMWB, S_MEMWRITE: state <= S_FETCH;
+                OP_LTYPE: state <= S_MEMADR; // lw
+                OP_STYPE: state <= S_MEMADR; // sw
+                OP_RTYPE: state <= S_EXECUTER; // R-type
+                OP_ITYPE: state <= S_EXECUTEI; // I-type
+                OP_JAL: state <= S_JAL; // jal
+                OP_JALR: state <= S_JALR; // jalr
+                OP_BTYPE: state <= S_BRANCH; // beq, bne
+            endcase
+        end
+        S_MEMADR: begin
+            if (op[5]==1'b1)
+                state <= S_MEMWRITE; // sw
+            else if (op[5]==1'b0) 
+                state <= S_MEMREAD; // lw
+            else
+                state <= S_ERROR;
+        end
+        S_MEMREAD: state <= S_MEMWB;
+        S_EXECUTEI, S_EXECUTER, S_JAL, S_JALR: state <= S_ALUWB;
+        S_ALUWB, S_MEMWB, S_MEMWRITE: state <= S_FETCH;
     endcase
 end
+end
+
 endmodule

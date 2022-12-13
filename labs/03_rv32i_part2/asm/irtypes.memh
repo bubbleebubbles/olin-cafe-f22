@@ -5,7 +5,7 @@ fff00093 // PC=0x0 line=1: addi  x1, x0, -1
 01117293 // PC=0x10 line=5: andi  x5, x2, 17
 00809313 // PC=0x14 line=6: slli  x6, x1, 8
 0021d393 // PC=0x18 line=7: srli  x7, x3, 2
-00635413 // PC=0x1c line=8: srai  x8, x6, 6
+40635413 // PC=0x1c line=8: srai  x8, x6, 6
 0230a493 // PC=0x20 line=9: slti  x9, x1, 35
 0230b513 // PC=0x24 line=10: sltiu x10, x1, 35
 001085b3 // PC=0x28 line=11: add   x11, x1, x1

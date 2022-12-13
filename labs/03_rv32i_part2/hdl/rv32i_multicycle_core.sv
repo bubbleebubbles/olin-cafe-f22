@@ -237,9 +237,9 @@ always_comb begin: ALU_DECODE_INSTRUCTION
         FUNCT3_SLTU: ri_alu_control = ALU_SLTU;
         FUNCT3_SHIFT_RIGHT: begin 
             if(funct7[5])
-                ri_alu_control = ALU_SRA;
-            else 
                 ri_alu_control = ALU_SRL;
+            else 
+                ri_alu_control = ALU_SRA;
         end 
         FUNCT3_BNE: begin
           if(cond != 1'b0)

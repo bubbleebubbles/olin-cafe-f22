@@ -32,7 +32,7 @@ register #(.N(32), .RESET(PC_START_ADDRESS)) PC_REGISTER (
   .clk(clk), .rst(rst), .ena(PC_ena), .d(PC_next), .q(PC)
 );
 register #(.N(32)) PC_OLD_REGISTER(
-  .clk(clk), .rst(rst), .ena(ir_write), .d(PC), .q(PC_old)
+  .clk(clk), .rst(rst), .ena(PC_ena), .d(PC), .q(PC_old)
 );
 
 //  an example of how to make named inputs for a mux:
@@ -71,25 +71,16 @@ alu_behavioural ALU (
 );
 
 // Implement your multicycle rv32i CPU here!
-enum logic [3:0] {S_FETCH, S_DECODE, S_MEMADR, S_EXECUTER, S_EXECUTEI, S_JUMP, S_BRANCH, S_ALUWB, S_MEMREAD, S_MEMWRITE, S_MEMWB, S_BEQ, S_JAL, S_JALR, S_ERROR=4'hF } state;
+enum logic [3:0] {S_FETCH, S_DECODE, S_MEMADR, S_EXECUTER, S_EXECUTEI, S_EXECUTEL, S_EXECUTES, S_WAIT, S_EXECUTEB2, S_TURN_OFF_WRITE_S, S_JUMP, S_BRANCH, S_ALUWB, S_MEMREAD, S_MEMWRITE, S_MEMWB, S_BEQ, S_BNE, S_JAL, S_JALR, S_ERROR=4'hF } state;
 logic [31:0] instr, imm_ext, alu_out, data, result, A;
 logic [1:0] alu_op;
 logic [6:0] op;
 logic [2:0] funct3;
 logic pc_target_src, pc_update, adr_src;
-logic branch, branch_taken, cond, funct7b5;
+logic branch, branch_taken, cond, funct7b5, jump;
 
 // branches
-//assign branch_taken = cond & branch;
-/*
-always_comb begin
-  case(funct3)
-    3'b000: cond = zero; // beq
-    3'b001: cond = ~zero; // bne
-    default: cond = 1'b0;
-  endcase
-end
-*/
+
 
 // control unit variables?
 always_comb begin
@@ -99,7 +90,8 @@ always_comb begin
   rs1 = instr[19:15];
   rs2 = instr[24:20];
   rd = instr[11:7];
-  PC_ena = (branch & (funct3[0] ? ~zero : zero)) | pc_update;
+  PC_ena = (branch & (funct3[0] ? ~zero : zero)) | pc_update | jump;
+
 end 
 
 // Muxes
@@ -130,7 +122,8 @@ enum logic [1:0] {MEM_SRC_PC, MEM_SRC_RESULT} mem_src;
 always_comb begin: MEMORY_ADR_MUX
     case(mem_src)
         MEM_SRC_PC: mem_addr = PC; 
-        MEM_SRC_RESULT: mem_addr = result;//ALU Result mux result 
+        MEM_SRC_RESULT: mem_addr = result;//ALU Result mux result
+        default: mem_addr = 0;
     endcase
 end
 
@@ -184,6 +177,7 @@ register #(.N(32)) ALU_RESULT_REGISTER(
     .clk(clk), .rst(rst), .ena(1'b1), .d(alu_result), .q(alu_last)
 ); 
 
+
 // control signals
 always_comb begin
   case(state)
@@ -197,7 +191,8 @@ always_comb begin
       alu_src_a   = ALU_SRC_PC_A;
       alu_src_b   = ALU_SRC_4_B;
       alu_op      = 2'b00;
-      result_src  = RESULT_SRC_ALU_LAST;
+      result_src  = RESULT_SRC_ALU;
+      alu_control = ALU_ADD;
     end
     S_DECODE: begin
       branch      = 0;
@@ -207,9 +202,10 @@ always_comb begin
       ir_write    = 0;
       reg_write   = 0;
       alu_src_a   = ALU_SRC_RF_A;
-      alu_src_b   = ALU_SRC_IMM_B;
+      alu_src_b   = ALU_SRC_RF_B;
       alu_op      = 2'b00;
       result_src  = RESULT_SRC_ALU;
+      alu_control = ALU_INVALID;
     end
     S_EXECUTER: begin
       branch      = 0;
@@ -222,6 +218,7 @@ always_comb begin
       alu_src_b   = ALU_SRC_RF_B;
       alu_op      = 2'b10;
       result_src  = RESULT_SRC_ALU;
+      alu_control = alu_control;
     end
     S_EXECUTEI: begin
       branch      = 0;
@@ -234,6 +231,7 @@ always_comb begin
       alu_src_b   = ALU_SRC_IMM_B;
       alu_op      = 2'b10;
       result_src  = RESULT_SRC_ALU;
+      alu_control = alu_control;
     end
     S_ALUWB: begin
       branch      = 0;
@@ -245,7 +243,9 @@ always_comb begin
       alu_src_a   = ALU_SRC_PC_A;
       alu_src_b   = ALU_SRC_RF_B;
       alu_op      = 2'b00;
-      result_src  = RESULT_SRC_ALU;
+      result_src  = RESULT_SRC_ALU_LAST;
+      alu_control = ALU_INVALID;
+      jump        = 0;
     end
     S_MEMADR: begin
       branch      = 0;
@@ -258,6 +258,7 @@ always_comb begin
       alu_src_b   = ALU_SRC_IMM_B;
       alu_op      = 2'b00;
       result_src  = RESULT_SRC_ALU;
+      alu_control = ALU_ADD;
     end
     S_MEMREAD: begin
       branch      = 0;
@@ -269,7 +270,8 @@ always_comb begin
       alu_src_a   = ALU_SRC_PC_A;
       alu_src_b   = ALU_SRC_RF_B;
       alu_op      = 2'b00;
-      result_src  = RESULT_SRC_ALU;
+      result_src  = RESULT_SRC_ALU_LAST;
+      alu_control = ALU_INVALID;
     end
     S_MEMWRITE: begin // check
         branch      = 0;
@@ -282,6 +284,7 @@ always_comb begin
         alu_src_b   = ALU_SRC_4_B;
         alu_op      = 2'b00;
         result_src  = RESULT_SRC_ALU;
+        alu_control = ALU_INVALID;
     end
     S_MEMWB: begin
       branch      = 0;
@@ -294,6 +297,7 @@ always_comb begin
       alu_src_b   = ALU_SRC_RF_B;
       alu_op      = 2'b00;
       result_src  = RESULT_SRC_ALU;
+      alu_control = ALU_INVALID;
     end
     S_BRANCH: begin
       branch      = 1;
@@ -306,6 +310,7 @@ always_comb begin
       alu_src_b   = ALU_SRC_RF_B;
       alu_op      = 2'b01;
       result_src  = RESULT_SRC_ALU;
+      alu_control = ALU_INVALID;
     end
     S_JAL: begin
       branch      = 0;
@@ -318,6 +323,8 @@ always_comb begin
       alu_src_b   = ALU_SRC_4_B;
       alu_op      = 2'b00;
       result_src  = RESULT_SRC_ALU;
+      alu_control = ALU_INVALID;
+      jump        = 1;
     end
     S_JALR: begin
       branch      = 0;
@@ -330,6 +337,8 @@ always_comb begin
       alu_src_b   = ALU_SRC_IMM_B;
       alu_op      = 2'b00;
       result_src  = RESULT_SRC_ALU_LAST;
+      alu_control = ALU_INVALID;
+      jump        = 1;
     end
     default: begin
       branch      = 0;
@@ -338,13 +347,16 @@ always_comb begin
       pc_update   = 0;
       ir_write    = 0;
       reg_write   = 0;
-      alu_src_a   = ALU_SRC_PC_A;
+      alu_src_a   = ALU_SRC_RF_A;
       alu_src_b   = ALU_SRC_RF_B;
       alu_op      = 2'b00;
       result_src  = RESULT_SRC_ALU;
+      alu_control = ALU_INVALID;
+      jump        = 0;
     end
   endcase
 end
+
 
 //ALU Decoding Types of Instructions 
 always_comb begin: ALU_DECODE_INSTRUCTION
@@ -354,11 +366,19 @@ always_comb begin: ALU_DECODE_INSTRUCTION
       2'b10: begin
         case(funct3)
             FUNCT3_ADD: begin
+              case (instr[31:25])
+                7'b0000000: alu_control = ALU_ADD;
+                7'b0100000: alu_control = ALU_SUB;
+              endcase
+            end
+              /*
                 if(funct7b5 & op[5])
                     alu_control = ALU_SUB; 
                 else
                     alu_control = ALU_ADD; 
+              
                 end
+              */
             FUNCT3_SLT: alu_control = ALU_SLT; 
             FUNCT3_XOR: alu_control = ALU_XOR;
             FUNCT3_SLL: alu_control = ALU_SLL; 
@@ -366,28 +386,28 @@ always_comb begin: ALU_DECODE_INSTRUCTION
             FUNCT3_AND: alu_control = ALU_AND; 
             FUNCT3_SLTU: alu_control = ALU_SLTU;
             default: alu_control = ALU_INVALID;
-            FUNCT3_SHIFT_RIGHT: begin 
+            FUNCT3_SHIFT_RIGHT: begin
+              case (instr[31:25])
+                7'b0000000: alu_control = ALU_SRL;
+                7'b0100000: alu_control = ALU_SRA;
+              endcase
+            end
+                /*
                 if(funct7b5)
                     alu_control = ALU_SRL;
                 else 
                     alu_control = ALU_SRA;
             end
+            */
         endcase
       end
       default: alu_control = ALU_INVALID;
     endcase
-end 
+  end
 
-/*
+
+
 always @(posedge clk) begin
-  if (rst) begin
-    instr <= 0;
-  end else if (ena) case (state)
-    S_FETCH: instr <= mem_rd_data;
-  endcase
-end
-*/
-always_ff @( posedge clk ) begin
   if (rst) begin
     state <= S_FETCH;
     reg_write <= 0;
@@ -396,8 +416,9 @@ always_ff @( posedge clk ) begin
     mem_wr_data <= reg_data2;
     alu_out <= alu_result;
     data <= mem_rd_data;
-   // instr <= ir_write ? mem_rd_data : instr;
-      case(state)
+    instr <= ir_write ? mem_rd_data : instr;
+
+    case (state)
         S_FETCH: state <= S_DECODE;
         S_DECODE: begin
             case(op)
@@ -408,22 +429,26 @@ always_ff @( posedge clk ) begin
                 OP_ITYPE: state <= S_EXECUTEI; // I-type
                 OP_JAL: state <= S_JAL; // jal
                 OP_JALR: state <= S_JALR; // jalr
-                OP_BTYPE: state <= S_BRANCH; // beq, bne
+                OP_BTYPE: begin
+                  case (instr[14:12])
+                    3'b000: state <= S_BEQ;
+                    3'b001: state <= S_BNE;
+                  endcase
+                  state <= S_BRANCH;
+                end
             endcase
         end
         S_MEMADR: begin
-            if (op[5]==1'b1)
-                state <= S_MEMWRITE; // sw
-            else if (op[5]==1'b0) 
-                state <= S_MEMREAD; // lw
-            else
-                state <= S_ERROR;
+          case (op)
+            7'b0000011: state <= S_MEMREAD;
+            7'b0100011: state <= S_MEMWRITE;
+          endcase
         end
         S_MEMREAD: state <= S_MEMWB;
         S_EXECUTEI, S_EXECUTER, S_JAL, S_JALR: state <= S_ALUWB;
-        S_ALUWB, S_MEMWB, S_MEMWRITE: state <= S_FETCH;
+        S_ALUWB, S_MEMWB, S_MEMWRITE, S_BRANCH: state <= S_FETCH;
     endcase
-end
+  end
 end
 
 endmodule

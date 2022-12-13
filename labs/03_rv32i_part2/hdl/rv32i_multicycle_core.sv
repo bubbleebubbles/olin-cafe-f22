@@ -297,7 +297,7 @@ always_comb begin: NEXT_STATE_LOGIC
     end
     S_MEMREAD: next_state = S_MEMWB;
     S_EXECUTEI, S_EXECUTER, S_JAL: next_state = S_ALUWB;
-    S_ALUWB, S_MEMREAD, S_MEMWRITE: next_state = S_FETCH;
+    S_ALUWB, S_MEMWB, S_MEMWRITE: next_state = S_FETCH;
     S_JUMP: begin
       /*
       $display("Please implement jumps")

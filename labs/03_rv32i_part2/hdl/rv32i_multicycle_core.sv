@@ -71,7 +71,7 @@ alu_behavioural ALU (
 );
 
 // Implement your multicycle rv32i CPU here!
-enum logic [3:0] {S_FETCH, S_DECODE, S_MEMADR, S_EXECUTER, S_EXECUTEI, S_EXECUTEL, S_EXECUTES, S_WAIT, S_EXECUTEB2, S_TURN_OFF_WRITE_S, S_JUMP, S_BRANCH, S_ALUWB, S_MEMREAD, S_MEMWRITE, S_MEMWB, S_BEQ, S_BNE, S_JAL, S_JALR, S_ERROR=4'hF } state;
+enum logic [3:0] {S_FETCH, S_DECODE, S_MEMADR, S_EXECUTER, S_EXECUTEI, S_BRANCH, S_ALUWB, S_MEMREAD, S_MEMWRITE, S_MEMWB, S_BEQ, S_BNE, S_JAL, S_JALR, S_ERROR=4'hF } state;
 logic [31:0] instr, imm_ext, alu_out, data, result, A;
 logic [1:0] alu_op;
 logic [6:0] op;
@@ -416,7 +416,7 @@ always @(posedge clk) begin
     mem_wr_data <= reg_data2;
     alu_out <= alu_result;
     data <= mem_rd_data;
-    instr <= ir_write ? mem_rd_data : instr;
+    //instr <= ir_write ? mem_rd_data : instr;
 
     case (state)
         S_FETCH: state <= S_DECODE;

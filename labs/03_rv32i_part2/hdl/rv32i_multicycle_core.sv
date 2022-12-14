@@ -175,6 +175,13 @@ logic alu_ena;
 wire [31:0] alu_last; 
 register #(.N(32)) ALU_RESULT_REGISTER(
     .clk(clk), .rst(rst), .ena(1'b1), .d(alu_result), .q(alu_last)
+);
+
+//Data memory register
+logic mem_data_ena;
+wire [31:0] mem_data; 
+register #(.N(32)) DATA_MEMORY_REGISTER(
+    .clk(clk), .rst(rst), .ena(mem_data_ena), .d(mem_rd_data), .q(mem_data)
 ); 
 
 
@@ -193,6 +200,7 @@ always_comb begin
       alu_op      = 2'b00;
       result_src  = RESULT_SRC_ALU;
       alu_control = ALU_ADD;
+      mem_src     = MEM_SRC_PC;
     end
     S_DECODE: begin
       branch      = 0;
@@ -206,6 +214,7 @@ always_comb begin
       alu_op      = 2'b00;
       result_src  = RESULT_SRC_ALU;
       alu_control = ALU_INVALID;
+      mem_src     = MEM_SRC_PC;
     end
     S_EXECUTER: begin
       branch      = 0;
@@ -219,6 +228,7 @@ always_comb begin
       alu_op      = 2'b10;
       result_src  = RESULT_SRC_ALU;
       alu_control = alu_control;
+      mem_src     = MEM_SRC_PC;
     end
     S_EXECUTEI: begin
       branch      = 0;
@@ -232,6 +242,7 @@ always_comb begin
       alu_op      = 2'b10;
       result_src  = RESULT_SRC_ALU;
       alu_control = alu_control;
+      mem_src     = MEM_SRC_PC;
     end
     S_ALUWB: begin
       branch      = 0;
@@ -246,6 +257,7 @@ always_comb begin
       result_src  = RESULT_SRC_ALU_LAST;
       alu_control = ALU_INVALID;
       jump        = 0;
+      mem_src     = MEM_SRC_PC;
     end
     S_MEMADR: begin
       branch      = 0;
@@ -259,6 +271,8 @@ always_comb begin
       alu_op      = 2'b00;
       result_src  = RESULT_SRC_ALU;
       alu_control = ALU_ADD;
+      mem_src     = MEM_SRC_RESULT;
+
     end
     S_MEMREAD: begin
       branch      = 0;
@@ -272,6 +286,8 @@ always_comb begin
       alu_op      = 2'b00;
       result_src  = RESULT_SRC_ALU_LAST;
       alu_control = ALU_INVALID;
+      mem_src     = MEM_SRC_PC;
+
     end
     S_MEMWRITE: begin // check
         branch      = 0;
@@ -285,6 +301,8 @@ always_comb begin
         alu_op      = 2'b00;
         result_src  = RESULT_SRC_ALU;
         alu_control = ALU_INVALID;
+        mem_src     = MEM_SRC_RESULT;
+
     end
     S_MEMWB: begin
       branch      = 0;
@@ -298,6 +316,8 @@ always_comb begin
       alu_op      = 2'b00;
       result_src  = RESULT_SRC_ALU;
       alu_control = ALU_INVALID;
+      mem_src     = MEM_SRC_RESULT;
+      PC_ena      = 0;
     end
     S_BRANCH: begin
       branch      = 1;
@@ -306,11 +326,11 @@ always_comb begin
       pc_update   = 0;
       ir_write    = 0;
       reg_write   = 0;
-      alu_src_a   = ALU_SRC_PC_A_OLD;
+      alu_src_a   = ALU_SRC_RF_A;
       alu_src_b   = ALU_SRC_RF_B;
       alu_op      = 2'b01;
       result_src  = RESULT_SRC_ALU;
-      alu_control = ALU_INVALID;
+      alu_control = ALU_SUB;
     end
     S_JAL: begin
       branch      = 0;
@@ -353,6 +373,9 @@ always_comb begin
       result_src  = RESULT_SRC_ALU;
       alu_control = ALU_INVALID;
       jump        = 0;
+      mem_src     = MEM_SRC_PC;
+
+
     end
   endcase
 end

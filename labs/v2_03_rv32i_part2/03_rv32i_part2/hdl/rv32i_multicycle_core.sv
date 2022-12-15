@@ -71,7 +71,6 @@ always_comb mem_wr_data = reg_B;
 
 //IR write register
 logic IR_write; 
-wire [31:0] instruction;
 register #(.N(32)) INSTRUCTION_REGISTER(
     .clk(clk), .rst(rst), .ena(IR_write), .d(mem_rd_data), .q(instruction)
 ); 
@@ -146,7 +145,6 @@ end
 //OUTPUT MUX
 
 enum logic [1:0] {ALU_SRC_OUT, RESULT_SRC_MEM_DATA, RESULT_SRC_ALU} result_src; 
-logic [31:0] result;
 always_comb begin: ALU_RESULT_MUX
     case(result_src)
         ALU_SRC_OUT: result = alu_out; 
@@ -390,7 +388,7 @@ always_comb begin: INSTRUCTION_CONTROL
     endcase 
 end 
 
-always_comb begin: 
+always_comb begin: CONTROL 
     if (ena) begin
         case(state) 
             S_FETCH: begin

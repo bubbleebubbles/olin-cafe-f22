@@ -86,7 +86,7 @@ register #(.N(32)) ALU_RESULT_REGISTER(
 logic mem_data_ena;
 wire [31:0] mem_data; 
 register #(.N(32)) DATA_MEMORY_REGISTER(
-    .clk(clk), .rst(rst), .ena(mem_data_ena), .d(mem_rd_data), .q(mem_data)
+    .clk(clk), .rst(rst), .ena(1'b1), .d(mem_rd_data), .q(mem_data)
 ); 
 
 //--------------------------------------------------------------------------------------
@@ -176,7 +176,7 @@ logic stype;
 enum logic [1:0] {IMM_SRC_I_TYPE, IMM_SRC_B_TYPE, IMM_SRC_S_TYPE, IMM_SRC_J_TYPE} immediate_src;
 
 always_comb begin: INSTRUCTION_BREAKDOWN
-
+/*
   // type of intruction
   rtype = (op == OP_RTYPE); 
   itype = (op == OP_ITYPE); 
@@ -184,7 +184,7 @@ always_comb begin: INSTRUCTION_BREAKDOWN
   btype = (op == OP_BTYPE); 
   ltype = (op == OP_LTYPE); 
   jtype = (op == OP_JAL) | (op == OP_JALR); 
-
+*/
   // instruction breakdown
   op=instruction[6:0];
   rd=instruction[11:7];
@@ -196,6 +196,7 @@ always_comb begin: INSTRUCTION_BREAKDOWN
   // immediates
   case(op)
     default:  immediate_src=IMM_SRC_I_TYPE;
+    
     OP_BTYPE: immediate_src=IMM_SRC_B_TYPE;
     OP_ITYPE: immediate_src=IMM_SRC_I_TYPE;
     OP_STYPE: immediate_src=IMM_SRC_S_TYPE;
@@ -262,6 +263,51 @@ logic sub_true;
 // Main FSM
 
 enum logic [3:0] {S_FETCH, S_DECODE, S_MEMADR, S_EXECUTER, S_EXECUTEI, S_JUMP, S_BRANCH, S_ALUWB, S_MEMREAD, S_MEMWRITE, S_MEMWB, S_BEQ, S_JAL, S_JALR, S_ERROR=4'hF } state, next_state;
+
+
+//MAIN FSM
+//
+
+always_ff @(posedge clk) begin: MAIN_FSM
+    if (rst) begin
+        state <= S_FETCH; 
+    end 
+    else begin 
+        case(state) 
+            S_FETCH: state <= S_DECODE; 
+            S_DECODE: begin 
+                case(op)
+                    OP_RTYPE: state <= S_EXECUTER; 
+                    OP_ITYPE: state <= S_EXECUTEI; 
+                    OP_LTYPE: state <= S_MEMADR;
+                    OP_JAL: state <= S_JAL; 
+                    OP_STYPE: state <= S_MEMADR; 
+                    OP_BTYPE: state <= S_BRANCH; 
+                    default: state <= S_ERROR; 
+                endcase 
+            end 
+            S_EXECUTEI: state <= S_ALUWB; 
+            S_EXECUTER: state <= S_ALUWB; 
+            S_ALUWB: state<= S_FETCH; 
+            S_MEMADR: begin 
+                case(op)
+                    OP_LTYPE: state <= S_MEMREAD; 
+                    OP_STYPE: state <= S_MEMWRITE; 
+                    default: state<= S_FETCH; 
+                endcase 
+            end 
+            S_MEMWRITE: state<= S_FETCH; 
+            S_MEMREAD: state <= S_MEMWB; 
+            S_MEMWB: state <= S_FETCH; 
+            default: state <= S_ERROR; 
+        endcase 
+    end 
+end 
+
+
+
+
+
 
 
 //--------------------------------------------------------------------------------------------------------
@@ -410,18 +456,19 @@ end
 
 
 //-------------------------------------------------------------------------------------------------------
- 
+
+
+
+//logic [14:0] controls;
 /*
-
-logic [14:0] controls;
-
 // State register
 always @(posedge clk or posedge rst) begin : FSM_MULTICYCLE
   if (rst) state <= S_FETCH;
   else state <= next_state;
 end
 
-// Logic for next state
+//Logic for next state
+
 always_comb begin: NEXT_STATE_LOGIC
   case(state)
     default: next_state = S_FETCH;
@@ -454,18 +501,17 @@ always_comb begin: NEXT_STATE_LOGIC
     S_EXECUTEI, S_EXECUTER, S_JAL: next_state = S_ALUWB;
     S_ALUWB, S_MEMWB, S_MEMWRITE: next_state = S_FETCH;
     S_JUMP: begin
-      /*
       $display("Please implement jumps")
       next_state = S_ERROR;
-      */
-/*
+    
+
     end
     S_BRANCH: begin
-      /*
+      
       $display("Please implement branches")
       next_state = S_ERROR;
-      */
-/*        alu_src_a = ALU_SRC_RF_A;
+      
+        alu_src_a = ALU_SRC_RF_A;
         alu_src_b = ALU_SRC_RF_B;
         ri_alu_control = ALU_SUB;
         result_src = RESULT_SRC_ALU;
@@ -473,8 +519,8 @@ always_comb begin: NEXT_STATE_LOGIC
     end
     endcase 
 end
-
-// state output logic
+/*
+//state output logic
 always_comb begin: STATE_OUTPUT_LOGIC
     case(state)
     /*

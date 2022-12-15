@@ -27,10 +27,12 @@ output wire [31:0] PC;
 wire [31:0] PC_old;
 logic PC_ena;
 logic [31:0] PC_next;
+logic PC_write; 
 
 //Control Unit
 logic [31:0] instruction; 
 logic [31:0] alu_out; 
+logic PC_Update; 
 
 // Register file
 logic reg_write;
@@ -50,23 +52,22 @@ register_file REGISTER_FILE(
 
 // Program Counter Registers
 register #(.N(32), .RESET(PC_START_ADDRESS)) PC_REGISTER (
-  .clk(clk), .rst(rst), .ena(PC_ena), .d(PC_next), .q(PC)
+  .clk(clk), .rst(rst), .ena(PC_write), .d(PC_next), .q(PC)
 );
 register #(.N(32)) PC_OLD_REGISTER(
-  .clk(clk), .rst(rst), .ena(PC_ena), .d(PC), .q(PC_old)
+  .clk(clk), .rst(rst), .ena(IR_write), .d(PC), .q(PC_old)
 );
 
 //Non-architectural registers A and B
-wire [31:0] reg_A, reg_B; 
+wire [31:0] reg_A; 
 
 register #(.N(32)) REGISTER_A(
   .clk(clk), .rst(rst), .ena(1'b1), .d(reg_data1), .q(reg_A)
 );
 
 register #(.N(32)) REGISTER_B (
-  .clk(clk), .rst(rst), .ena(1'b1), .d(reg_data1), .q(reg_B)
+  .clk(clk), .rst(rst), .ena(1'b1), .d(reg_data1), .q(mem_wr_data)
 );
-always_comb mem_wr_data = reg_B; 
 
 
 //IR write register
@@ -79,7 +80,7 @@ register #(.N(32)) INSTRUCTION_REGISTER(
 logic alu_ena; 
 wire [31:0] alu_last; 
 register #(.N(32)) ALU_RESULT_REGISTER(
-    .clk(clk), .rst(rst), .ena(alu_ena), .d(alu_result), .q(alu_last)
+    .clk(clk), .rst(rst), .ena(1'b1), .d(alu_result), .q(alu_out)
 ); 
 
 //Data memory register
@@ -88,6 +89,19 @@ wire [31:0] mem_data;
 register #(.N(32)) DATA_MEMORY_REGISTER(
     .clk(clk), .rst(rst), .ena(1'b1), .d(mem_rd_data), .q(mem_data)
 ); 
+//-------------------------------------------------------------------------------------
+//UPDATE PC
+
+                
+//Update PC 
+logic alu_zero;
+logic Branch; 
+always_comb begin: UPDATE_PC
+    PC_write = (Branch & alu_zero) | PC_Update;
+end 
+
+
+
 
 //--------------------------------------------------------------------------------------
 //MEMORY MUX
@@ -95,11 +109,12 @@ register #(.N(32)) DATA_MEMORY_REGISTER(
 
 //Select memory address based on address select signal
 //Memory Mux 
-enum logic [1:0] {MEM_SRC_PC, MEM_SRC_RESULT} mem_src; 
+enum logic [1:0] {MEM_SRC_PC, MEM_SRC_RESULT, MEM_DEFAULT} mem_src; 
 always_comb begin: MEMORY_ADR_MUX
     case(mem_src)
         MEM_SRC_PC: mem_addr = PC; 
         MEM_SRC_RESULT: mem_addr = result;//ALU Result mux result 
+        MEM_DEFAULT: mem_addr = 0; 
         default: mem_addr = 0; 
     endcase
 end
@@ -121,35 +136,38 @@ alu_behavioural ALU (
 
 
 //Mux A 
-enum logic [1:0] {ALU_SRC_PC_A, ALU_SRC_PC_A_OLD, ALU_SRC_RF_A} alu_src_a; 
+enum logic [1:0] {ALU_SRC_PC_A = 2'b00, ALU_SRC_PC_A_OLD = 2'b01, ALU_SRC_RF_A = 2'b10, A_DEFAULT} alu_src_a; 
 always_comb begin: ALU_A_MUX
     case (alu_src_a)
         ALU_SRC_PC_A: src_a = PC; 
         ALU_SRC_PC_A_OLD: src_a = PC_old; 
         ALU_SRC_RF_A: src_a = reg_A; 
+        A_DEFAULT: src_a = 0; 
         default: src_a = 0; 
     endcase
 end
 
 //Mux B
-enum logic [1:0] {ALU_SRC_RF_B, ALU_SRC_IMM_B, ALU_SRC_4_B} alu_src_b; 
+enum logic [1:0] {ALU_SRC_RF_B = 2'b00, ALU_SRC_IMM_B = 2'b01, ALU_SRC_4_B = 2'b10, B_DEFAULT} alu_src_b; 
 always_comb begin: ALU_B_MUX
     case (alu_src_b)
         ALU_SRC_RF_B: src_b = mem_wr_data; 
         ALU_SRC_IMM_B: src_b = immediate_extended ; 
-        ALU_SRC_4_B: src_b = 32'd4; 
+        ALU_SRC_4_B: src_b = 4;
+        B_DEFAULT: src_b = 0; 
         default: src_b = 0; 
     endcase
 end
 //---------------------------------------------------------------------------------------
 //OUTPUT MUX
 
-enum logic [1:0] {ALU_SRC_OUT, RESULT_SRC_MEM_DATA, RESULT_SRC_ALU} result_src; 
+enum logic [1:0] {ALU_SRC_OUT = 2'b00, RESULT_SRC_MEM_DATA = 2'b01, RESULT_SRC_ALU = 2'b10, R_DEFAULT = 2'b11} result_src; 
 always_comb begin: ALU_RESULT_MUX
     case(result_src)
         ALU_SRC_OUT: result = alu_out; 
         RESULT_SRC_MEM_DATA: result = mem_data; 
         RESULT_SRC_ALU: result = alu_result; 
+        R_DEFAULT: result = 0; 
         default: result = 0; 
     endcase
 end 
@@ -262,19 +280,36 @@ logic sub_true;
 
 // Main FSM
 
-enum logic [3:0] {S_FETCH, S_DECODE, S_MEMADR, S_EXECUTER, S_EXECUTEI, S_JUMP, S_BRANCH, S_ALUWB, S_MEMREAD, S_MEMWRITE, S_MEMWB, S_BEQ, S_JAL, S_JALR, S_ERROR=4'hF } state, next_state;
+//enum logic [3:0] {S_FETCH, S_DECODE, S_MEMADR, S_EXECUTER, S_EXECUTEI, S_JUMP, S_ALUWB, S_MEMREAD, S_MEMWRITE, S_MEMWB, S_BEQ, S_JAL, S_JALR, S_ERROR=4'hF } state, next_state;
 
+
+enum logic [3:0] {
+  S_FETCH = 4'b0000,
+  S_DECODE = 4'b0001,
+  S_MEMADR = 4'b0010,
+  S_EXECUTER = 4'b0011,
+  S_EXECUTEI = 4'b0100,
+  S_JAL = 4'b0101,
+  S_JALR = 4'b0110,
+  S_BRANCH = 4'b0111,
+  S_ALUWB = 4'b1000,
+  S_MEMREAD = 4'b1001,
+  S_MEMWRITE = 4'b1010,
+  S_JUMPWB = 4'b1011,
+  S_MEMWB = 4'b1100,
+  S_ERROR = 4'b1111
+} state;
 
 //MAIN FSM
 //
 
 always_ff @(posedge clk) begin: MAIN_FSM
     if (rst) begin
-        state <= S_FETCH; 
+        state <= S_FETCH;
     end 
     else begin 
         case(state) 
-            S_FETCH: state <= S_DECODE; 
+            S_FETCH: state <= S_DECODE;
             S_DECODE: begin 
                 case(op)
                     OP_RTYPE: state <= S_EXECUTER; 
@@ -282,7 +317,7 @@ always_ff @(posedge clk) begin: MAIN_FSM
                     OP_LTYPE: state <= S_MEMADR;
                     OP_JAL: state <= S_JAL; 
                     OP_STYPE: state <= S_MEMADR; 
-                    OP_BTYPE: state <= S_BRANCH; 
+                   // OP_BTYPE: state <= S_BRANCH; 
                     default: state <= S_ERROR; 
                 endcase 
             end 
@@ -318,7 +353,7 @@ always_comb begin: ALU_CONTROL
         S_FETCH: begin
             alu_src_a = ALU_SRC_PC_A;
             alu_src_b = ALU_SRC_4_B; 
-            alu_control = ALU_ADD; 
+            alu_control = ALU_ADD;
         end 
 
         S_MEMADR: begin
@@ -448,12 +483,18 @@ always_comb begin: CONTROL
     end 
 end 
 
-
-
-                
-                    
-
-
+always_comb begin: PC_CONTROL
+    case(state) 
+        S_FETCH: begin 
+            PC_Update = 1'b1;
+            PC_next = alu_result; 
+        end 
+        default: begin 
+            PC_Update = 1'b0;
+            PC_next = 0;
+        end 
+    endcase 
+end 
 
 //-------------------------------------------------------------------------------------------------------
 

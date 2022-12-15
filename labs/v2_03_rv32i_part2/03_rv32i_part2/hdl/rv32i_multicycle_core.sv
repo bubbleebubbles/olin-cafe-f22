@@ -35,7 +35,7 @@ logic [31:0] alu_out;
 // Register file
 logic reg_write;
 logic [4:0] rd, rs1, rs2;
-//logic [31:0] rfile_wr_data;
+logic [31:0] rfile_wr_data;
 logic [31:0] result; 
 wire [31:0] reg_data1, reg_data2;
 register_file REGISTER_FILE(
@@ -275,7 +275,7 @@ always_comb begin: ALU_CONTROL
             alu_control = ALU_ADD; 
         end 
 
-        S_MEM_ADDR: begin
+        S_MEMADR: begin
             alu_src_a = ALU_SRC_RF_A; 
             alu_src_b = ALU_SRC_IMM_B; 
             alu_control = ALU_ADD; 
@@ -302,7 +302,7 @@ always_comb begin: ALU_CONTROL
                     case(funct7)
                         7'b0000000: alu_control = ALU_SRL; 
                         7'b0100000: alu_control = ALU_SRA; 
-                        default: alu_control = INVALID; 
+                        default: alu_control = ALU_INVALID; 
                     endcase 
                 end 
             endcase
@@ -329,7 +329,7 @@ always_comb begin: ALU_CONTROL
                     case(funct7)
                         7'b0000000: alu_control = ALU_SRL; 
                         7'b0100000: alu_control = ALU_SRA; 
-                        default: alu_control = INVALID; 
+                        default: alu_control = ALU_INVALID; 
                     endcase 
                 end 
             endcase
@@ -383,8 +383,8 @@ end
 
 always_comb begin: INSTRUCTION_CONTROL
     case(state)
-        S_FETCH: IR_WRITE = 1'b1; 
-        default: IR_WRITE = 1'b0; 
+        S_FETCH: IR_write = 1'b1; 
+        default: IR_write = 1'b0; 
     endcase 
 end 
 
@@ -397,7 +397,6 @@ always_comb begin: CONTROL
             S_MEMREAD: begin 
                 mem_src = MEM_SRC_RESULT; 
             end 
-            default: mem_src = 0; 
 
         endcase 
     end 

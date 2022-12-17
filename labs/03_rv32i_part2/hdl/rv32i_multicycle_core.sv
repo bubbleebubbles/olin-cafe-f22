@@ -3,14 +3,16 @@
 
 `include "alu_types.sv"
 `include "rv32i_defines.sv"
+`include "memmap.sv"
 
+// Custom version that only implements I, R, Load, Store, and Jumps.
 module rv32i_multicycle_core(
   clk, rst, ena,
   mem_addr, mem_rd_data, mem_wr_data, mem_wr_ena,
   PC, instructions_completed
 );
 
-parameter PC_START_ADDRESS=0;
+parameter PC_START_ADDRESS = {MMU_BANK_INST, 28'h0};
 
 // Standard control signals.
 input  wire clk, rst, ena; // <- worry about implementing the ena signal last.
@@ -19,39 +21,57 @@ input  wire clk, rst, ena; // <- worry about implementing the ena signal last.
 output logic [31:0] mem_addr, mem_wr_data;
 input   wire [31:0] mem_rd_data;
 output logic mem_wr_ena;
-output logic [31:0] instructions_completed; 
-
 
 // Program Counter
 output wire [31:0] PC;
+output logic [31:0] instructions_completed;
 wire [31:0] PC_old;
-logic PC_ena;
-logic [31:0] PC_next; 
+logic PC_ena, PC_old_ena;
+logic [31:0] PC_next;
+
+// Control Signals
+// Decoder
+logic [6:0] op;
+logic [2:0] funct3;
+logic [6:0] funct7;
+logic rtype, itype, ltype, stype, btype, jtype;
+enum logic [2:0] {IMM_SRC_ITYPE, IMM_SRC_STYPE, IMM_SRC_BTYPE, IMM_SRC_JTYPE} immediate_src;
+logic [31:0] extended_immediate;
+
+// R-file Control Signals
+logic [4:0] rd, rs1, rs2;
+wire [31:0] reg_data1, reg_data2;
+logic reg_write;
+logic [31:0] rfile_wr_data;
+wire [31:0] reg_A, reg_B;
+
+// ALU Control Signals
+enum logic [1:0] {ALU_SRC_A_PC, ALU_SRC_A_RF, ALU_SRC_A_OLD_PC, ALU_SRC_A_ZERO} alu_src_a;
+enum logic [1:0] {ALU_SRC_B_RF, ALU_SRC_B_IMM, ALU_SRC_B_4, ALU_SRC_B_ZERO} alu_src_b;
+logic [31:0] src_a, src_b;
+wire [31:0] alu_result;
+alu_control_t alu_control, ri_alu_control;
+wire overflow;
+wire zero;
+wire equal;
+
+// Non-architectural Register Signals
+logic IR_write;
+wire [31:0] IR; // Instruction Register (current instruction)
+logic ALU_ena;
+wire [31:0] alu_last; // Not a descriptive name, but this is what it's called in the text.
+logic mem_data_ena;
+wire [31:0] mem_data;
+enum logic {MEM_SRC_PC, MEM_SRC_RESULT} mem_src;
+enum logic [1:0] {RESULT_SRC_ALU, RESULT_SRC_MEM_DATA, RESULT_SRC_ALU_LAST} result_src; 
+logic [31:0] result;
 
 // Program Counter Registers
 register #(.N(32), .RESET(PC_START_ADDRESS)) PC_REGISTER (
   .clk(clk), .rst(rst), .ena(PC_ena), .d(PC_next), .q(PC)
 );
-register #(.N(32)) PC_OLD_REGISTER(
-  .clk(clk), .rst(rst), .ena(PC_ena), .d(PC), .q(PC_old)
-);
-
-//  an example of how to make named inputs for a mux:
-/*
-    enum logic {MEM_SRC_PC, MEM_SRC_RESULT} mem_src;
-    always_comb begin : memory_read_address_mux
-      case(mem_src)
-        MEM_SRC_RESULT : mem_rd_addr = alu_result;
-        MEM_SRC_PC : mem_rd_addr = PC;
-        default: mem_rd_addr = 0;
-    end
-*/
 
 // Register file
-logic reg_write;
-logic [4:0] rd, rs1, rs2;
-logic [31:0] rfile_wr_data;
-wire [31:0] reg_data1, reg_data2;
 register_file REGISTER_FILE(
   .clk(clk), 
   .wr_ena(reg_write), .wr_addr(rd), .wr_data(rfile_wr_data),
@@ -59,469 +79,509 @@ register_file REGISTER_FILE(
   .rd_data0(reg_data1), .rd_data1(reg_data2)
 );
 
-//Non-architectural register
-wire [31:0] reg_A, reg_B; 
-
-register #(.N(32)) REGISTER_A(
-  .clk(clk), .rst(rst), .ena(1'b1), .d(reg_data1), .q(reg_A)
-);
-
-register #(.N(32)) REGISTER_B (
-  .clk(clk), .rst(rst), .ena(1'b1), .d(reg_data1), .q(reg_B)
-);
-
-
-always_comb mem_wr_data = reg_B; 
+// Non-architecture register: save register read data for future cycles.
+register #(.N(32)) REGISTER_A (.clk(clk), .rst(rst), .ena(1'b1), .d(reg_data1), .q(reg_A));
+register #(.N(32)) REGISTER_B (.clk(clk), .rst(rst), .ena(1'b1), .d(reg_data2), .q(reg_B));
+always_comb mem_wr_data = reg_B; // RISC-V always stores data from this location.
 
 // ALU and related control signals
 // Feel free to replace with your ALU from the homework.
-logic [31:0] src_a, src_b;
-alu_control_t alu_control, ri_alu_control;
-wire [31:0] alu_result;
-wire overflow, zero, equal;
 alu_behavioural ALU (
   .a(src_a), .b(src_b), .result(alu_result),
   .control(alu_control),
   .overflow(overflow), .zero(zero), .equal(equal)
 );
 
-// Implement your multicycle rv32i CPU here!
-
-//Mux A 
-enum logic [1:0] {ALU_SRC_PC_A,ALU_SRC_RF_A, ALU_SRC_PC_A_OLD} alu_src_a; 
-always_comb begin: ALU_A_MUX
-    case (alu_src_a)
-        ALU_SRC_PC_A: src_a = PC; 
-        ALU_SRC_RF_A: src_a = reg_A; 
-        ALU_SRC_PC_A_OLD: src_a = PC_old; 
-        default: src_a = 0; 
-    endcase
+// Mux to pick the correct a inputs to the ALU. 
+always_comb begin : ALU_MUX_A
+  case (alu_src_a)
+    ALU_SRC_A_PC: src_a = PC;
+    ALU_SRC_A_RF: src_a = reg_A;
+    ALU_SRC_A_OLD_PC: src_a = PC_old;
+    ALU_SRC_A_ZERO   : src_a = 32'd0;
+  endcase 
 end
-
-//Mux B
-enum logic [1:0] {ALU_SRC_RF_B, ALU_SRC_IMM_B, ALU_SRC_4_B} alu_src_b; 
-always_comb begin: ALU_B_MUX
-    case (alu_src_b)
-        ALU_SRC_RF_B: src_b = reg_B; 
-        ALU_SRC_IMM_B: src_b = immediate_extended ; 
-        ALU_SRC_4_B: src_b = 32'd4; 
-        default: src_b = 0; 
-    endcase
-end
-
-//Memory Mux 
-enum logic [1:0] {MEM_SRC_PC, MEM_SRC_RESULT} mem_src; 
-always_comb begin: MEMORY_ADR_MUX
-    case(mem_src)
-        MEM_SRC_PC: mem_addr = PC; 
-        MEM_SRC_RESULT: mem_addr = result;//ALU Result mux result 
-    endcase
-end
-
-//Non-architectural registers
-//IR write register
-logic IR_write; 
-wire [31:0] instruction;
-register #(.N(32)) INSTRUCTION_REGISTER(
-    .clk(clk), .rst(rst), .ena(IR_write), .d(mem_rd_data), .q(instruction)
-); 
-
-//ALU result register
-logic alu_ena; 
-wire [31:0] alu_last; 
-register #(.N(32)) ALU_RESULT_REGISTER(
-    .clk(clk), .rst(rst), .ena(alu_ena), .d(alu_result), .q(alu_last)
-); 
-
-//Data memory register
-logic mem_data_ena;
-wire [31:0] mem_data; 
-register #(.N(32)) DATA_MEMORY_REGISTER(
-    .clk(clk), .rst(rst), .ena(mem_data_ena), .d(mem_rd_data), .q(mem_data)
-); 
-
-//Output Mux 
-enum logic [1:0] {RESULT_SRC_ALU, RESULT_SRC_MEM_DATA, RESULT_SRC_ALU_LAST} result_src; 
-logic [31:0] result;
-always_comb begin: ALU_RESULT_MUX
-    case(result_src)
-        RESULT_SRC_ALU: result = alu_result; 
-        RESULT_SRC_MEM_DATA: result = mem_data; 
-        RESULT_SRC_ALU_LAST: result = alu_last; 
-        default: result = alu_result; 
-    endcase
-end 
-
-always_comb begin: RESULT_ALIASES //for things that are connected/same value
-    PC_next = result; 
-    rfile_wr_data = result; 
-end
-
-// Decoding instructions
-logic [1:0] alu_op;
-logic [6:0] op;
-logic [2:0] funct3;
-logic [6:0] funct7;
-logic [31:0] immediate_extended;
-logic rtype;
-logic itype;
-logic btype;
-logic ltype;
-logic jtype;
-logic stype;
-enum logic [1:0] {IMM_SRC_I_TYPE, IMM_SRC_B_TYPE, IMM_SRC_S_TYPE, IMM_SRC_J_TYPE} immediate_src;
-
-always_comb begin: INSTRUCTION_BREAKDOWN
-
-  // type of intruction
-  rtype = (op == OP_RTYPE); 
-  itype = (op == OP_ITYPE); 
-  stype = (op == OP_STYPE); 
-  btype = (op == OP_BTYPE); 
-  ltype = (op == OP_LTYPE); 
-  jtype = (op == OP_JAL) | (op == OP_JALR); 
-
-  // instruction breakdown
-  op=instruction[6:0];
-  rd=instruction[11:7];
-  rs1=instruction[19:15];
-  rs2=instruction[24:20];
-  funct3=instruction[14:12];
-  funct7=instruction[31:25];
-
-  // immediates
-  case(op)
-    default:  immediate_src=IMM_SRC_I_TYPE;
-    OP_BTYPE: immediate_src=IMM_SRC_B_TYPE;
-    OP_ITYPE: immediate_src=IMM_SRC_I_TYPE;
-    OP_STYPE: immediate_src=IMM_SRC_S_TYPE;
-    OP_JAL:   immediate_src=IMM_SRC_J_TYPE;
-    OP_JALR:  immediate_src=IMM_SRC_J_TYPE;
+always_comb begin : ALU_MUX_B
+  case (alu_src_b)
+    ALU_SRC_B_RF: src_b = reg_B;
+    ALU_SRC_B_IMM: src_b = extended_immediate;
+    ALU_SRC_B_4: src_b = 32'd4;
+    ALU_SRC_B_ZERO: src_b = 32'd0;
   endcase
-  case(immediate_src)
-    2'b00: immediate_extended={{20{instruction[31]}},instruction[31:20]};
-    2'b01: immediate_extended={{20{instruction[31]}},instruction[31:25],instruction[11:7]};
-    2'b10: immediate_extended={{20{instruction[31]}},instruction[30:25],instruction[11:8],1'b0};
-    2'b11: immediate_extended={{20{instruction[31]}},instruction[19:12],instruction[20],instruction[30:21],1'b0};
-  endcase
-
-end 
-
-/*
-logic branch; // check if using
-logic [3:0] flags;
-//logic v, c, n, zero; // Flags: overflow, carry out, negative, zero
-logic cond; // cond is 1 when condition for branch met
-//assign {v, c, n, zero} = flags; // check if using
-logic PCTargetSrc;
-logic [2:0] ImmSrc;
-*/
-logic cond; // cond is 1 when condition for branch met
-
-logic sub_true; 
-//ALU Decoding Types of Instructions 
-always_comb begin: ALU_DECODE_INSTRUCTION
-    case(funct3)
-        FUNCT3_ADD: begin
-            if(funct7[5] && op==OP_RTYPE)
-                ri_alu_control = ALU_SUB; 
-            else
-                ri_alu_control = ALU_ADD; 
-        end 
-
-        FUNCT3_SLT: ri_alu_control = ALU_SLT; 
-        FUNCT3_XOR: ri_alu_control = ALU_XOR;
-        FUNCT3_SLL: ri_alu_control = ALU_SLL; 
-        FUNCT3_OR:  ri_alu_control = ALU_OR; 
-        FUNCT3_AND: ri_alu_control = ALU_AND; 
-        FUNCT3_SLTU: ri_alu_control = ALU_SLTU;
-        FUNCT3_SHIFT_RIGHT: begin 
-            if(funct7[5])
-                ri_alu_control = ALU_SRL;
-            else 
-                ri_alu_control = ALU_SRA;
-        end 
-        FUNCT3_BNE: begin
-          if(cond != 1'b0)
-            PC_ena = 1;
-        end
-        FUNCT3_BEQ: begin
-          if(cond == 1'b0)
-            PC_ena = 1;
-        end 
-    endcase 
-end 
-        
-
-// Main FSM
-
-enum logic [3:0] {S_FETCH, S_DECODE, S_MEMADR, S_EXECUTER, S_EXECUTEI, S_JUMP, S_BRANCH, S_ALUWB, S_MEMREAD, S_MEMWRITE, S_MEMWB, S_BEQ, S_JAL, S_JALR, S_ERROR=4'hF } state, next_state;
-
-
-logic [14:0] controls;
-
-// State register
-always @(posedge clk or posedge rst) begin : FSM_MULTICYCLE
-  if (rst) state <= S_FETCH;
-  else state <= next_state;
 end
 
-// Logic for next state
-always_comb begin: NEXT_STATE_LOGIC
-  case(state)
-    default: next_state = S_FETCH;
-    S_FETCH: next_state = S_DECODE;
-    S_DECODE: begin
-      case(op)
-        default: begin
-          $display("Error - %b op not implemented", op);
-          next_state = S_ERROR;
-        end
-        //replace with variables from defines file 
-        OP_LTYPE: next_state = S_MEMADR; // lw
-        OP_STYPE: next_state = S_MEMADR; // sw
-        OP_RTYPE: next_state = S_EXECUTER; // R-type
-        OP_ITYPE: next_state = S_EXECUTEI; // I-type
-        OP_JAL: next_state = S_JAL; // jal
-        OP_JALR: next_state = S_JALR; // jalr
-        OP_BTYPE: next_state = S_BRANCH; // beq, bne
+// Use funct3 to compute the alu control code for R and I types. 
+always_comb begin : ALU_CONTROL_DECODING
+  case(funct3)
+    FUNCT3_ADD : begin
+      if(op[5] & IR[30]) ri_alu_control = ALU_SUB;
+      else ri_alu_control = ALU_ADD;
+    end
+    FUNCT3_SLL : ri_alu_control = ALU_SLL;
+    FUNCT3_SLT : ri_alu_control = ALU_SLT;
+    FUNCT3_SLTU : ri_alu_control = ALU_SLTU;
+    FUNCT3_XOR : ri_alu_control = ALU_XOR;
+    FUNCT3_SHIFT_RIGHT : begin
+      case (IR[31:25])
+        7'b0000000: ri_alu_control = ALU_SRL;
+        7'b0100000: ri_alu_control = ALU_SRA;
+        default: ri_alu_control = ALU_SUB;
       endcase
     end
-    S_MEMADR: begin
-        if (op[5]==1'b1)
-            next_state = S_MEMWRITE; // sw
-        else if (op[5]==1'b0) 
-            next_state = S_MEMREAD; // lw
-        else
-            next_state = S_ERROR; 
-    end
-    S_MEMREAD: next_state = S_MEMWB;
-    S_EXECUTEI, S_EXECUTER, S_JAL: next_state = S_ALUWB;
-    S_ALUWB, S_MEMWB, S_MEMWRITE: next_state = S_FETCH;
-    S_JUMP: begin
-      /*
-      $display("Please implement jumps")
-      next_state = S_ERROR;
-      */
-
-    end
-    S_BRANCH: begin
-      /*
-      $display("Please implement branches")
-      next_state = S_ERROR;
-      */
-        alu_src_a = ALU_SRC_RF_A;
-        alu_src_b = ALU_SRC_RF_B;
-        ri_alu_control = ALU_SUB;
-        result_src = RESULT_SRC_ALU;
-        next_state = S_FETCH;
-    end
-    endcase 
-end
-
-// state output logic
-always_comb begin: STATE_OUTPUT_LOGIC
-    case(state)
-    /*
-    // AdrSrc_IRWrite_ALUSrcA_ALUSrcB_ALUOp_ResultSrc_PCUpdate_RegWrite_MemWrite_Branch
-    S_FETCH:    controls=15'b0_1_00_10_00_10_1_0_0_0;
-    S_DECODE:   controls=15'b0_0_01_01_00_00_0_0_0_0;
-    S_MEMADR:   controls=15'b0_0_10_01_00_00_0_0_0_0;
-    S_MEMREAD:  controls=15'b1_0_00_00_00_00_0_0_0_0;
-    S_MEMWRITE: controls=15'b1_0_00_00_00_00_0_0_1_0;
-    S_MEMWB:    controls=15'b0_0_00_00_00_01_0_1_0_0;
-    S_EXECUTER: controls=15'b0_0_10_00_10_00_0_0_0_0;
-    S_EXECUTEI: controls=15'b0_0_10_01_10_00_0_0_0_0;
-    S_ALUWB:    controls=15'b0_0_00_00_00_00_0_1_0_0;
-    S_JAL:      controls=15'b0_0_01_10_00_00_1_0_0_0;
-    S_BEQ:      controls=15'b0_0_10_00_01_00_1_0_0_1;
-    S_BNE:      controls=15'b0_0_10_00_01_00_1_0_0_1;
-    default:    controls=15'bx_x_xx_xx_xx_xx_x_x_x_x;
-    */
-
-    S_FETCH: begin
-        mem_wr_ena      = 0;
-        reg_write       = 0;
-        PC_ena          = 1;
-        result_src      = RESULT_SRC_ALU;
-        IR_write        = 1;
-        alu_src_a       = ALU_SRC_PC_A;
-        alu_src_b       = ALU_SRC_4_B;
-        alu_control     = ALU_ADD;
-        alu_ena         = 0;
-        mem_data_ena = 0;
-        mem_src         = MEM_SRC_PC;
-    end
-    S_DECODE: begin
-        mem_wr_ena      = 0;
-        reg_write       = 0;
-        PC_ena          = 0;
-        result_src      = RESULT_SRC_ALU;
-        IR_write        = 0;
-        alu_src_a       = ALU_SRC_RF_A;
-        alu_src_b       = ALU_SRC_RF_B;
-        alu_control     = ALU_INVALID;
-        alu_ena         = 0;
-        mem_data_ena = 0;
-        mem_src         = MEM_SRC_PC;
-    end
-    S_EXECUTER: begin
-      mem_wr_ena      = 0;
-      reg_write       = 0;
-      PC_ena          = 0;
-      result_src      = RESULT_SRC_ALU;
-      IR_write        = 0;
-      alu_src_a       = ALU_SRC_RF_A;
-      alu_src_b       = ALU_SRC_RF_B;
-      alu_control     = ri_alu_control;
-      alu_ena         = 1;
-      mem_data_ena = 0;
-      mem_src         = MEM_SRC_PC;
-    end
-    S_EXECUTEI: begin
-      mem_wr_ena      = 0;
-      reg_write       = 0;
-      PC_ena          = 0;
-      result_src      = RESULT_SRC_ALU;
-      IR_write        = 0;
-      alu_src_a       = ALU_SRC_RF_A;
-      alu_src_b       = ALU_SRC_IMM_B;
-      alu_control     = ri_alu_control;
-      alu_ena         = 1;
-      mem_data_ena = 0;
-      mem_src         = MEM_SRC_PC;
-    end
-    S_ALUWB: begin
-      mem_wr_ena      = 0;
-      reg_write       = 1;
-      PC_ena          = 0;
-      result_src      = RESULT_SRC_ALU_LAST;
-      IR_write        = 0;
-      alu_src_a       = ALU_SRC_RF_A;
-      alu_src_b       = ALU_SRC_RF_B;
-      alu_control     = ALU_INVALID;
-      alu_ena         = 0;
-      mem_data_ena = 0;
-      mem_src         = MEM_SRC_PC;
-    end
-    S_MEMADR: begin
-      mem_wr_ena      = 0;
-      reg_write       = 0;
-      PC_ena          = 0;
-      result_src      = RESULT_SRC_ALU;
-      IR_write        = 0;
-      alu_src_a       = ALU_SRC_RF_A;
-      alu_src_b       = ALU_SRC_IMM_B;
-      alu_control     = ALU_ADD;
-      alu_ena         = 1;
-      mem_data_ena = 0;
-      mem_src         = MEM_SRC_RESULT;
-    end
-    S_MEMREAD: begin
-      mem_wr_ena      = 0;
-      reg_write       = 0;
-      PC_ena          = 0;
-      result_src      = RESULT_SRC_ALU_LAST;
-      IR_write        = 0;
-      alu_src_a       = ALU_SRC_RF_A;
-      alu_src_b       = ALU_SRC_IMM_B;
-      alu_control     = ALU_INVALID;
-      alu_ena         = 0;
-      mem_data_ena = 0;
-      mem_src         = MEM_SRC_PC;
-    end
-    S_MEMWRITE: begin // check
-      mem_wr_ena      = 1;
-      reg_write       = 0;
-      PC_ena          = 0;
-      result_src      = RESULT_SRC_ALU;
-      IR_write        = 0;
-      alu_src_a       = ALU_SRC_RF_A;
-      alu_src_b       = ALU_SRC_IMM_B;
-      alu_control     = ALU_INVALID;
-      alu_ena         = 0;
-      mem_data_ena = 1;
-      mem_src         = MEM_SRC_RESULT;
-    end
-    S_MEMWB: begin
-      mem_wr_ena      = 0;
-      reg_write       = 0;
-      PC_ena          = 0;
-      result_src      = RESULT_SRC_ALU;
-      IR_write        = 0;
-      alu_src_a       = ALU_SRC_RF_A;
-      alu_src_b       = ALU_SRC_IMM_B;
-      alu_control     = ALU_INVALID;
-      alu_ena         = 1;
-      mem_data_ena = 0;
-      mem_src         = MEM_SRC_RESULT;
-    end
-   // S_BEQ: begin 
-    //    mem_wr_ena      = 0;
-     //   reg_write       = 0;
-     //   PC_ena          = 0;
-     //   result_src      = RESULT_SRC_ALU;
-     //   IR_write        = 0;
-     //   alu_src_a       = ALU_SRC_RF_A;
-     //   alu_src_b       = ALU_SRC_IMM_B;
-     //   alu_control     = ALU_INVALID;
-     //   alu_ena         = 1;
-     //   mem_data_ena = 0;
-    //    mem_src         = MEM_SRC_RESULT;
-   // end
-    // S_BNE: begin 
-     //   mem_wr_ena      = 0;
-      //  reg_write       = 0;
-       // PC_ena          = 0;
-       // result_src      = RESULT_SRC_ALU;
-       // IR_write        = 0;
-       // alu_src_a       = ALU_SRC_RF_A;
-       // alu_src_b       = ALU_SRC_IMM_B;
-       // alu_control     = ALU_INVALID;
-        //alu_ena         = 1;
-       // mem_data_ena = 0;
-       // mem_src         = MEM_SRC_RESULT;
-   // end
-    
-    default: begin
-      mem_wr_ena      = 0;
-      reg_write       = 0;
-      PC_ena          = 0;
-      result_src      = RESULT_SRC_ALU;
-      IR_write        = 0;
-      alu_src_a       = ALU_SRC_RF_A;
-      alu_src_b       = ALU_SRC_RF_B;
-      alu_control     = ALU_INVALID;
-      alu_ena         = 0;
-      mem_data_ena = 0;
-      mem_src         = MEM_SRC_PC;
-    end
+    FUNCT3_OR : ri_alu_control = ALU_OR;
+    FUNCT3_AND : ri_alu_control = ALU_AND;
+    default: ri_alu_control = ALU_INVALID;
   endcase
 end
 
-//assign {AdrSrc, IRWrite, ALUSrcA, ALUSrcB, ALUOp, ResultSrc, PCUpdate, RegWrite, MemWrite, Branch} = controls;
+// Non-architectural Register: IR
+// Stores the current instruction once it's ready from memory.
+register #(.N(32)) IR_REGISTER (
+  .clk(clk), .rst(rst), .ena(IR_write), .d(mem_rd_data), .q(IR)
+);
 
-// add
-// sub
-// xor
-// or
-// and
-// sll
-// srl
-// sra
-// slt
-// sltu
-// addi
-// xori
-// ori
-// andi
-// slli
-// srli
-// srai
-// slti
-// sltiu
-// jalr
-// bne
+// Non-architectural Register: IR
+// Stores the original PC (useful for branches).
+register #(.N(32)) PC_OLD_REGISTER(
+  .clk(clk), .rst(rst), .ena(IR_write), .d(PC), .q(PC_old)
+);
 
+// Non-architectural Register: ALU Result
+// Stores the ALU result for future clock cycles.
+register #(.N(32)) ALU_REGISTER(
+  .clk(clk), .rst(rst), .ena(1'b1), .d(alu_result), .q(alu_last)
+);
+
+// Non-architectural Register: Memory Data
+// Stores what was read from memory for future clock cycles.
+register #(.N(32)) MEM_DATA_REGISTER(
+  .clk(clk), .rst(rst), .ena(mem_data_ena), .d(mem_rd_data), .q(mem_data)
+);
+
+// Memory Address Mux
+always_comb begin : MEM_ADDR_MUX
+  case(mem_src)
+    MEM_SRC_PC : mem_addr = PC;
+    MEM_SRC_RESULT: mem_addr = result;
+  endcase
+end
+
+// Result Muxing
+always_comb begin: RESULT_MUX
+  case(result_src)
+    RESULT_SRC_ALU: result = alu_result;
+    RESULT_SRC_MEM_DATA: result = mem_data;
+    RESULT_SRC_ALU_LAST: result = alu_last;
+    default: result = alu_result;
+  endcase
+end
+always_comb begin : RESULT_ALIASES // Worth having separate names for debugging.
+  PC_next = result;
+  rfile_wr_data = result;
+end
+
+// Instruction Decoding
+//logic [11:0] branch_immediate;
+always_comb begin : instruction_decoder
+  // Pull apart instruction
+  op = IR[6:0];
+  rd = IR[11:7];
+  rs1 = IR[19:15];
+  rs2 = IR[24:20];
+  funct3 = IR[14:12];
+  funct7 = IR[31:25];
+
+  /*
+  // Comparators to see which op type it is (could be more efficient with gates given how elegant the op code encoding is, but these signals are very useful for debugging).
+  ltype = (op == OP_LTYPE);
+  itype = (op == OP_ITYPE);
+  rtype = (op == OP_RTYPE);
+  stype = (op == OP_STYPE);
+  btype = (op == OP_BTYPE);
+  jtype = (op == OP_JAL) | (op == OP_JALR);
+  */
+
+  // Immediate decoding
+  case(op)
+    OP_ITYPE: immediate_src = IMM_SRC_ITYPE;
+    OP_STYPE: immediate_src = IMM_SRC_STYPE;
+    OP_BTYPE: immediate_src = IMM_SRC_BTYPE;
+    OP_JALR : immediate_src = IMM_SRC_ITYPE;
+    OP_JAL  : immediate_src = IMM_SRC_JTYPE;
+    default : immediate_src = IMM_SRC_ITYPE; // immediate isn't used under any other op codes, so we could put anything here.
+  endcase
+
+  // See Figure 6.27 in the text for why the immediate bit packing is so convoluted.
+  //branch_immediate = {IR[31], IR[7],IR[30:25], IR[11:8]};
+  case(immediate_src)
+    IMM_SRC_ITYPE : begin
+      if(funct3 == FUNCT3_SHIFT_RIGHT | funct3 == FUNCT3_SLL) begin
+        extended_immediate = {27'b0, IR[24:20]};
+      end else begin
+        extended_immediate = {{20{IR[31]}}, IR[31:20]}; 
+      end
+    end
+    IMM_SRC_STYPE : extended_immediate = {{20{IR[31]}}, IR[31:25],IR[11:7]};
+    IMM_SRC_BTYPE : extended_immediate = {{20{IR[31]}}, IR[7],IR[30:25], IR[11:8], 1'b0};
+    IMM_SRC_JTYPE : extended_immediate = {{12{IR[31]}}, IR[19:12], IR[20], IR[30:21], 1'b0};
+    default: extended_immediate = 0;
+  endcase
+end
+
+// Multicycle FSM
+enum logic [3:0] {
+  // Cycle 1: Get the current instruction, store in IR.
+  S_FETCH = 0,
+  // Cycle 2: Decode the instruction.
+  S_DECODE = 1, 
+  // Cycle 3: Varies based on op code.
+  S_MEM_ADDR = 2, S_EXECUTE_R = 3, S_EXECUTE_I = 4, 
+  S_JAL =5 , S_JALR = 6, S_BRANCH = 7,
+  // Cycle 4: Varies based on op code.
+  S_ALU_WRITEBACK = 8, S_MEM_READ = 9, S_MEM_WRITE = 10, S_JUMP_WRITEBACK = 11,
+  // Cycle 5: For load instructions.
+  S_MEM_WRITEBACK = 12,
+  S_ERROR = 4'hF
+} state;
+
+always_ff @(posedge clk) begin : MULTICYCLE_FSM
+  if(rst) begin
+    state <= S_FETCH;
+    instructions_completed <= 0;
+  end
+  else if (ena) begin
+    case(state)
+      S_FETCH: begin
+        state <= S_DECODE;
+      end
+      S_DECODE: begin
+`ifdef SIMULATION 
+        $display("@%t: PC = 0x%h, IR = 0x%h, decoded op: %s", $time, PC, IR, op_name(op));
+`endif // SIMULATION
+        case(op)
+          OP_RTYPE: state <= S_EXECUTE_R;
+          OP_ITYPE: state <= S_EXECUTE_I;
+          OP_STYPE, OP_LTYPE: state <= S_MEM_ADDR;
+          OP_JAL: state <= S_JAL;
+          OP_JALR: state <= S_JALR;
+          OP_BTYPE: state <= S_BRANCH;
+          default: begin
+            $display("Error: op %b not implemented yet", op);
+            state <= S_ERROR;
+          end
+        endcase
+      end
+      S_MEM_ADDR: begin
+        case(op)
+          OP_LTYPE: state <= S_MEM_READ;
+          OP_STYPE: state <= S_MEM_WRITE;
+          default: state <= S_ERROR; 
+        endcase
+      end
+      S_EXECUTE_R, S_EXECUTE_I: begin
+        state <= S_ALU_WRITEBACK;
+      end
+      S_JAL: begin
+        state <= S_JUMP_WRITEBACK;
+      end
+      S_JALR: begin
+        state <= S_JUMP_WRITEBACK;
+      end
+      S_JUMP_WRITEBACK : begin
+        instructions_completed <= instructions_completed + 1;
+        state <= S_FETCH;
+      end
+      S_BRANCH: begin
+        instructions_completed <= instructions_completed + 1;
+        state <= S_FETCH;
+      end
+      S_MEM_READ: begin
+        state <= S_MEM_WRITEBACK;
+      end
+      S_ALU_WRITEBACK, S_MEM_WRITEBACK, S_MEM_WRITE: begin
+        instructions_completed <= instructions_completed + 1;
+        state <= S_FETCH;
+      end
+      default: begin
+        state <= S_ERROR;
+      end
+    endcase
+  end
+end
+
+// Branching
+logic branch_taken;
+always_comb begin: PC_and_IR_control_unit
+  IR_write = state == S_FETCH;
+
+  case(funct3)
+    FUNCT3_BEQ: branch_taken = equal;
+    FUNCT3_BNE: branch_taken = ~equal;
+    default: branch_taken = 0;
+  endcase
+
+  case(state)
+    S_FETCH, S_JAL, S_JALR: PC_ena = 1;
+    S_BRANCH: PC_ena = branch_taken;
+    default: PC_ena = 0;
+  endcase
+end
+
+always_comb begin : memory_control_unit
+  mem_wr_ena = state == S_MEM_WRITE;
+  case(state)
+    S_MEM_ADDR, S_MEM_READ, S_MEM_WRITE: mem_src = MEM_SRC_RESULT;
+    default: mem_src = MEM_SRC_PC;
+  endcase
+  mem_data_ena = (state == S_MEM_READ) | (state == S_MEM_WRITE);
+end
+
+always_comb begin : register_file_control_unit
+  case(state)
+    S_ALU_WRITEBACK, S_MEM_WRITEBACK, S_JUMP_WRITEBACK : reg_write = 1;
+    default reg_write = 0;
+  endcase
+
+  case(state)
+    S_ALU_WRITEBACK, S_MEM_READ, S_MEM_WRITE, S_BRANCH: 
+      result_src = RESULT_SRC_ALU_LAST;
+    S_MEM_WRITEBACK: result_src = RESULT_SRC_MEM_DATA;
+    default: result_src = RESULT_SRC_ALU;
+  endcase
+end
+
+always_comb begin : MULTICYCLE_FSM_COMB_OUTPUTS
+// This is the laziest way to do this: it's more compact if you reason about the states and do custom comb. logic. 
+// That said, making it work is the highest priority! Optimize only when you need to.
+  //PC_old_ena = state == S_FETCH;
+  case(state)
+    S_FETCH: begin
+      alu_src_a = ALU_SRC_A_PC;
+      alu_src_b = ALU_SRC_B_4;
+      ALU_ena = 0;
+      alu_control = ALU_ADD;
+
+      /*
+      mem_wr_ena = 0;
+      PC_ena = 1;
+      reg_write = 0;
+      IR_write = 1;
+      mem_data_ena = 0;
+      mem_src = MEM_SRC_PC;
+      result_src = RESULT_SRC_ALU;
+      */
+    end
+    S_DECODE: begin
+      alu_src_a = ALU_SRC_A_OLD_PC;
+      alu_src_b = ALU_SRC_B_IMM;
+      ALU_ena = 1;
+      alu_control = ALU_ADD;
+      
+      /*
+      mem_wr_ena = 0;
+      PC_ena = 0;
+      reg_write = 0;
+      IR_write = 0;
+      mem_data_ena = 0;
+      mem_src = MEM_SRC_PC;
+      result_src = RESULT_SRC_ALU;
+      */
+    end
+    S_EXECUTE_R: begin
+      alu_src_a = ALU_SRC_A_RF;
+      alu_src_b = ALU_SRC_B_RF;
+      ALU_ena = 1;
+      alu_control = ri_alu_control;
+      
+      /*
+      mem_wr_ena = 0;
+      PC_ena = 0;
+      reg_write = 0;
+      IR_write = 0;
+      mem_data_ena = 0;
+      mem_src = MEM_SRC_PC;
+      result_src = RESULT_SRC_ALU;
+      */
+    end
+    S_EXECUTE_I: begin
+      alu_src_a = ALU_SRC_A_RF;
+      alu_src_b = ALU_SRC_B_IMM;
+      ALU_ena = 1;
+      alu_control = ri_alu_control;
+      
+      /*
+      mem_wr_ena = 0;
+      PC_ena = 0;
+      reg_write = 0;
+      IR_write = 0;
+      mem_data_ena = 0;
+      mem_src = MEM_SRC_PC;
+      result_src = RESULT_SRC_ALU;
+      */
+    end
+    S_ALU_WRITEBACK: begin
+      alu_src_a = ALU_SRC_A_RF;
+      alu_src_b = ALU_SRC_B_RF;
+      ALU_ena = 0;
+      alu_control = ALU_INVALID;
+      
+      /*
+      mem_wr_ena = 0;
+      PC_ena = 0;
+      reg_write = 1;
+      IR_write = 0;
+      mem_data_ena = 0;
+      mem_src = MEM_SRC_PC;
+      result_src = RESULT_SRC_ALU_LAST;
+      */
+    end
+    S_MEM_ADDR: begin
+      alu_src_a = ALU_SRC_A_RF;
+      alu_src_b = ALU_SRC_B_IMM;
+      ALU_ena = 1;
+      alu_control = ALU_ADD;
+      
+      /*
+      mem_wr_ena = 0;
+      PC_ena = 0;
+      reg_write = 0;
+      IR_write = 0;
+      mem_data_ena = 0;
+      mem_src = MEM_SRC_RESULT;
+      result_src = RESULT_SRC_ALU;
+      */
+    end
+    S_MEM_READ: begin
+      alu_src_a = ALU_SRC_A_RF;
+      alu_src_b = ALU_SRC_B_IMM;
+      ALU_ena = 0;
+      alu_control = ALU_INVALID;
+      
+      /*
+      mem_wr_ena = 0;
+      PC_ena = 0;
+      reg_write = 0;
+      IR_write = 0;
+      mem_data_ena = 1;
+      mem_src = MEM_SRC_RESULT;
+      result_src = RESULT_SRC_ALU_LAST;
+      */
+    end
+    S_MEM_WRITE: begin
+      alu_src_a = ALU_SRC_A_RF;
+      alu_src_b = ALU_SRC_B_IMM;
+      ALU_ena = 0;
+      alu_control = ALU_INVALID;
+      
+      /*
+      mem_wr_ena = 1;
+      PC_ena = 0;
+      reg_write = 0;
+      IR_write = 0;
+      mem_data_ena = 1;
+      mem_src = MEM_SRC_RESULT;
+      result_src = RESULT_SRC_ALU_LAST; // TODO: check mux here
+      */
+    end
+    S_MEM_WRITEBACK: begin
+      alu_src_a = ALU_SRC_A_RF;
+      alu_src_b = ALU_SRC_B_IMM;
+      ALU_ena = 1;
+      alu_control = ALU_INVALID;
+
+      /*
+      mem_wr_ena = 0;
+      PC_ena = 0;
+      reg_write = 1;
+      IR_write = 0;
+      mem_data_ena = 0;
+      mem_src = MEM_SRC_PC;
+      result_src = RESULT_SRC_MEM_DATA;
+      */
+    end
+    S_BRANCH: begin
+      alu_src_a = ALU_SRC_A_RF;
+      alu_src_b = ALU_SRC_B_RF;
+      ALU_ena = 1;
+      if(funct3[1]) alu_control = ALU_SLTU;
+      else alu_control = ALU_SLT;
+
+      /*
+      mem_wr_ena = 0;
+      PC_ena = 0;
+      reg_write = 0;
+      IR_write = 0;
+      mem_data_ena = 0;
+      mem_src = MEM_SRC_PC;
+      result_src = RESULT_SRC_ALU;
+      alu_control = ALU_INVALID;
+      */
+    end
+    S_JAL: begin
+      alu_src_a = ALU_SRC_A_OLD_PC;
+      alu_src_b = ALU_SRC_B_IMM;
+      ALU_ena = 0;
+      alu_control = ALU_ADD;
+
+      /*
+      mem_wr_ena = 0;
+      PC_ena = 1;
+      reg_write = 0;
+      IR_write = 0;
+      mem_data_ena = 0;
+      mem_src = MEM_SRC_PC;
+      result_src = RESULT_SRC_ALU;
+      */
+    end
+    S_JALR: begin
+      alu_src_a = ALU_SRC_A_RF;
+      alu_src_b = ALU_SRC_B_IMM;
+      ALU_ena = 0;
+      alu_control = ALU_ADD;
+
+      /*
+      mem_wr_ena = 0;
+      PC_ena = 1;
+      reg_write = 0;
+      IR_write = 0;
+      mem_data_ena = 0;
+      mem_src = MEM_SRC_PC;
+      result_src = RESULT_SRC_ALU;
+      */
+    end
+    S_JUMP_WRITEBACK : begin
+      alu_src_a = ALU_SRC_A_OLD_PC;
+      alu_src_b = ALU_SRC_B_4;
+      ALU_ena = 0;
+      alu_control = ALU_ADD;
+      
+      /*
+      mem_wr_ena = 0;
+      PC_ena = 0;
+      reg_write = 1;
+      IR_write = 0;
+      mem_data_ena = 0;
+      mem_src = MEM_SRC_PC;
+      result_src = RESULT_SRC_ALU; //TODO check this one
+      */
+    end
+    default: begin
+      alu_src_a = ALU_SRC_A_RF;
+      alu_src_b = ALU_SRC_B_RF;
+      ALU_ena = 0;
+      alu_control = ALU_INVALID;
+
+      /*
+      mem_wr_ena = 0;
+      PC_ena = 0;
+      reg_write = 0;
+      IR_write = 0;
+      mem_data_ena = 0;
+      mem_src = MEM_SRC_PC;
+      result_src = RESULT_SRC_ALU;
+      */
+    end
+  endcase
+end
 
 endmodule

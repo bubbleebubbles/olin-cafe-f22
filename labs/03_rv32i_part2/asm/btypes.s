@@ -12,18 +12,18 @@ BEQ_WORKS: addi x10, x0, 1
 bne x1, x2, BNE_WORKS
   addi x31, x31, 1 # Should never run!
 BNE_WORKS: addi x11, x0, 1
-blt x2, x1, BLT_WORKS
-  addi x31, x31, 1 # Should never run!
-BLT_WORKS: addi x12, x0, 1
-bge x0, x0, BGE_WORKS
-  addi x31, x31, 1 # Should never run!
-BGE_WORKS: addi x13, x0, 1
-bltu x1, x2, BLTU_WORKS
-  addi x31, x31, 1 # Should never run!
-BLTU_WORKS: addi x14, x0, 1
-bgeu x2, x1, BGEU_WORKS
-  addi x31, x31, 1 # Should never run!
-BGEU_WORKS: addi x15, x0, 1
+#blt x2, x1, BLT_WORKS
+#  addi x31, x31, 1 # Should never run!
+#BLT_WORKS: addi x12, x0, 1
+#bge x0, x0, BGE_WORKS
+#  addi x31, x31, 1 # Should never run!
+#BGE_WORKS: addi x13, x0, 1
+#bltu x1, x2, BLTU_WORKS
+#  addi x31, x31, 1 # Should never run!
+#BLTU_WORKS: addi x14, x0, 1
+#bgeu x2, x1, BGEU_WORKS
+#  addi x31, x31, 1 # Should never run!
+#BGEU_WORKS: addi x15, x0, 1
 INFINITE_LOOP: beq x0, x0, INFINITE_LOOP
 
 # |---------------------------|

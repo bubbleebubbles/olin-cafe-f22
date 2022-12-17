@@ -1,3 +1,72 @@
+Cara Mulrooney and Dasha Chadiuk
+Collaborators: Full section & CAs :)
+
+## Instruction Checklist
+Optional instructions are in italics.
+### R-types
+- [X] add
+- [X] sub
+- [X] xor
+- [X] or
+- [X] and
+- [X] sll
+- [X] srl
+- [X] sra
+- [X] slt
+- [X] sltu
+### I-types
+- [X] addi
+- [X] xori
+- [X] ori
+- [X] andi
+- [X] slli
+- [X] srli
+- [X] srai
+- [X] slti
+- [X] sltiu
+### Memory-Types (Loads/Stores)
+- [X] lw
+- [X] sw
+- [] *lb*
+- [] *lh*
+- [] *lbu*
+- [] *lhu*
+- [] *sb*
+- [] *sh*
+
+### B-types (Branches)
+- [X] beq
+- [X] bne
+- [] *blt*
+- [] *bge*
+- [] *bltu*
+- [] *bgeu*
+### J-types (Jumps)
+- [X] jal
+- [X] jalr (technically an i-type)
+### U-types (Upper immediates)
+- [] *lui*
+- [] *auipc*
+
+Note, the above list doesn't include some common psuedo-instructions like `ret` and `j` and `not` since those can be experssed in terms of what we've already listed here. See `assembler.py` for more details.
+
+## Note from Cara and Dasha
+This lab posed a great challenge, as we got caught up in a cycle of debugging for about a week and a half. In this process, we utilized our resources through reaching out to and collaborating with our peers, CAs, and Avi. After meeting with Avi and going over our code, we realized that, though our logic was sound, our implementation had several small issues blocking our progress. Over our session, we took note of several professional code practices and debugging strategies. We learned to always check that we aren’t changing the value of a variable in multiple places, always implement default states in always_comb blocks, keep variable naming conventions consistent, and group similar functional blocks together. As a group, we decided that the best, most time-efficient path forward was to use the solutions for a CPU without branches, implement branching ourselves, and finish the lab with our own custom assembly file. Although we used the CPU solution file, we still learned from the professionally-written code, as we took the time to understand the code written, run tests, and observe the gtkwave outputs. Overall, though this lab was very challenging, we thought it was a great learning experience, as we learned to utilize our resources, communicate with others, and develop our coding practices.
+
+## Documentation
+### Main FSM
+![](docs/CompArchLab3FSM.jpg)
+
+Note: The chosen state after S_DECODE depends on the opcode of instruction. Please reference the table below for each opcode option and its corresponding state.
+![](docs/CompArchLab3FSMa.jpg)
+
+
+Note: The chosen state after S_MEM_ADDR depends on the opcode of instruction. Please reference the table below for each opcode option and its corresponding state.
+![](docs/CompArchLab3FSMb.jpg)
+
+### Complete Multicycle Processor
+![](docs/CompArchLab3Dataflow.jpg)
+
 # Multicycle RISC-V CPU
 This lab is all about designing a working rv32i (integer subset of the RISC-V spec) system. The overall system (in `rv32i_system.sv`) consists of a computation core (datapath, alu, register file, etc.) and a Memory Management Unit (MMU). The MMU will be critical when we start connecting our CPU to external peripherals, but for now you can treat it as a RAM with one read/write port.
 
@@ -46,51 +115,3 @@ You can use `make analyze_rv32i_system` to generate a variety of reports showing
 
 Your submission should include any extra tests you've run, as well as sketches/block diagrams showing the main multicycle FSM as well as the datapaths for a few R, I, memory, and branch instructions. To make grading easier, mark off the instructions you have implemented on the list below before submitting.
 
-## Instruction Checklist
-Optional instructions are in italics.
-### R-types
-- [ ] add
-- [ ] sub
-- [ ] xor
-- [ ] or
-- [ ] and
-- [ ] sll
-- [ ] srl
-- [ ] sra
-- [ ] slt
-- [ ] sltu
-### I-types
-- [ ] addi
-- [ ] xori
-- [ ] ori
-- [ ] andi
-- [ ] slli
-- [ ] srli
-- [ ] srai
-- [ ] slti
-- [ ] sltiu
-### Memory-Types (Loads/Stores)
-- [ ] lw
-- [ ] sw
-- [ ] *lb*
-- [ ] *lh*
-- [ ] *lbu*
-- [ ] *lhu*
-- [ ] *sb*
-- [ ] *sh*
-
-### B-types (Branches)
-- [ ] beq
-- [ ] bne
-- [ ] *blt*
-- [ ] *bge*
-- [ ] *bltu*
-- [ ] *bgeu*
-### J-types (Jumps)
-- [ ] jal
-- [ ] jalr (technically an i-type)
-### U-types (Upper immediates)
-- [ ] *lui*
-- [ ] *auipc*
-
-Note, the above list doesn't include some common psuedo-instructions like `ret` and `j` and `not` since those can be experssed in terms of what we've already listed here. See `assembler.py` for more details.

@@ -41,6 +41,13 @@ test_rv32i_functions: tests/test_rv32i_system.sv asm/functions.memh ${RV32I_SRCS
 test_rv32i_peripherals: tests/test_rv32i_system.sv asm/peripherals.memh ${RV32I_SRCS}
 	${IVERILOG} -DINITIAL_INST_MEM=\"asm/peripherals.memh\" -DMAX_CYCLES="1_500_000" tests/test_rv32i_system.sv ${RV32I_SRCS} -s test_rv32i_system -o test_rv32i_system.bin && ${VVP} test_rv32i_system.bin ${VVP_POST}
 
+
+test_rv32i_led_cycle: tests/test_rv32i_system.sv asm/led_cycle.memh ${RV32I_SRCS}
+	${IVERILOG} -DINITIAL_INST_MEM=\"asm/led_cycle.memh\" -DMAX_CYCLES="1_500_000" tests/test_rv32i_system.sv ${RV32I_SRCS} -s test_rv32i_system -o test_rv32i_system.bin && ${VVP} test_rv32i_system.bin ${VVP_POST}
+
+
+
+
 waves_rv32i_system:
 	gtkwave rv32i_system.fst -a tests/rv32i_system.gtkw
 

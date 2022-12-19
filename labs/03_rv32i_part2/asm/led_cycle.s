@@ -1,101 +1,102 @@
 # Set a variable as the MMR Address, then set the bit fields one by one (shifting in between)
-addi s1, x0, 1
-slli s1, s1, 28 # s1 = 32'h1000_0000, the MMR Address
+MAIN:
+	addi s1, x0, 1
+	slli s1, s1, 28 # s1 = 32'h1000_0000, the MMR Address
 # MMR is {led0[3:0], led1[3:0], red[7:0], green[7:0], blue[7:0]
 # LED peripheral knows that the RGB led is active low.
 # Can set low bits with immediate instructions, then shift left.
-ori  t0, x0, 8 # led0
-slli t0, t0, 4 
-ori  t0, t0, 4 # led1
-slli t0, t0, 4
-ori  t0, t0, 127 # red percentage
-slli t0, t0, 8
-ori  t0, t0, 0 # green percentage
-slli t0, t0, 8
-ori  t0, t0, 255 # blue percentage
-slli t0, t0, 8
+	ori  t0, x0, 8 # led0
+	slli t0, t0, 4 
+	ori  t0, t0, 4 # led1
+	slli t0, t0, 4
+	ori  t0, t0, 127 # red percentage
+	slli t0, t0, 8
+	ori  t0, t0, 0 # green percentage
+	slli t0, t0, 8
+	ori  t0, t0, 255 # blue percentage
+	slli t0, t0, 8
 
-sw t0, 0(s1)
-addi a0, zero, 250
-jal ra, DELAY
+	sw t0, 0(s1)
+	addi a0, zero, 250
+	jal ra, DELAY
 //Color 2: Mint Green 
-ori  t0, x0, 8 # led0
-slli t0, t0, 4 
-ori  t0, t0, 4 # led1
-slli t0, t0, 4
-ori  t0, t0, 64 # red percentage
-slli t0, t0, 8
-ori  t0, t0, 180  # green percentage
-slli t0, t0, 8
-ori  t0, t0, 137 # blue percentage
-slli t0, t0, 8
+	ori  t0, x0, 8 # led0
+	slli t0, t0, 4 
+	ori  t0, t0, 4 # led1
+	slli t0, t0, 4
+	ori  t0, t0, 64 # red percentage
+	slli t0, t0, 8
+	ori  t0, t0, 180  # green percentage
+	slli t0, t0, 8
+	ori  t0, t0, 137 # blue percentage
+	slli t0, t0, 8
 
-sw t0, 0(s1)
-addi a0, zero, 250
-jal ra, DELAY
+	sw t0, 0(s1)
+	addi a0, zero, 250
+	jal ra, DELAY
 //Color 3: SKy Blue 
-ori  t0, x0, 8 # led0
-slli t0, t0, 4 
-ori  t0, t0, 4 # led1
-slli t0, t0, 4
-ori  t0, t0, 135 # red percentage
-slli t0, t0, 8
-ori  t0, t0, 206 # green percentage
-slli t0, t0, 8
-ori  t0, t0, 235 # blue percentage
-slli t0, t0, 8
-
-sw t0, 0(s1)
-addi a0, zero, 250
-jal ra, DELAY
-//Color 4: Lilac 
-ori  t0, x0, 8 # led0
-slli t0, t0, 4 
-ori  t0, t0, 4 # led1
-slli t0, t0, 4
-ori  t0, t0, 166 # red percentage
-slli t0, t0, 8
-ori  t0, t0, 147 # green percentage
-slli t0, t0, 8
-ori  t0, t0, 188 # blue percentage
-slli t0, t0, 8
-
-sw t0, 0(s1)
-
-addi a0, zero, 250
-jal ra, DELAY
-//Color 5: Forest Green  
-ori  t0, x0, 8 # led0
-slli t0, t0, 4 
-ori  t0, t0, 4 # led1
-slli t0, t0, 4
-ori  t0, t0, 95 # red percentage
-slli t0, t0, 8
-ori  t0, t0, 167 # green percentage
-slli t0, t0, 8
-ori  t0, t0, 119 # blue percentage
-slli t0, t0, 8
-
-sw t0, 0(s1)
-addi a0, zero, 250
-jal ra, DELAY
-//Color 6: Salmony/Coraly Orange/Pink 
-ori  t0, x0, 8 # led0
-slli t0, t0, 4 
-ori  t0, t0, 4 # led1
-slli t0, t0, 4
-ori  t0, t0, 246 # red percentage
-slli t0, t0, 8
-ori  t0, t0, 201 # green percentage
-slli t0, t0, 8
-ori  t0, t0, 170 #blue percentage
-slli t0, t0, 8
-
-sw t0, 0(s1)
-addi a0, zero, 250
-jal ra, DELAY
-
-
+	ori  t0, x0, 8 # led0
+	slli t0, t0, 4 
+	ori  t0, t0, 4 # led1
+	slli t0, t0, 4
+	ori  t0, t0, 135 # red percentage
+	slli t0, t0, 8
+	ori  t0, t0, 206 # green percentage
+	slli t0, t0, 8
+	ori  t0, t0, 235 # blue percentage
+	slli t0, t0, 8
+	
+	sw t0, 0(s1)
+	addi a0, zero, 250
+	jal ra, DELAY
+	//Color 4: Lilac 
+	ori  t0, x0, 8 # led0
+	slli t0, t0, 4 
+	ori  t0, t0, 4 # led1
+	slli t0, t0, 4
+	ori  t0, t0, 166 # red percentage
+	slli t0, t0, 8
+	ori  t0, t0, 147 # green percentage
+	slli t0, t0, 8
+	ori  t0, t0, 188 # blue percentage
+	slli t0, t0, 8
+	
+	sw t0, 0(s1)
+	
+	addi a0, zero, 250
+	jal ra, DELAY
+	//Color 5: Forest Green  
+	ori  t0, x0, 8 # led0
+	slli t0, t0, 4 
+	ori  t0, t0, 4 # led1
+	slli t0, t0, 4
+	ori  t0, t0, 95 # red percentage
+	slli t0, t0, 8
+	ori  t0, t0, 167 # green percentage
+	slli t0, t0, 8
+	ori  t0, t0, 119 # blue percentage
+	slli t0, t0, 8
+	
+	sw t0, 0(s1)
+	addi a0, zero, 250
+	jal ra, DELAY
+	//Color 6: Salmony/Coraly Orange/Pink 
+	ori  t0, x0, 8 # led0
+	slli t0, t0, 4 
+	ori  t0, t0, 4 # led1
+	slli t0, t0, 4
+	ori  t0, t0, 246 # red percentage
+	slli t0, t0, 8
+	ori  t0, t0, 201 # green percentage
+	slli t0, t0, 8
+	ori  t0, t0, 170 #blue percentage
+	slli t0, t0, 8
+	
+	sw t0, 0(s1)
+	addi a0, zero, 250
+	jal ra, DELAY
+	
+	beq x0, x0, MAIN
 
 
 

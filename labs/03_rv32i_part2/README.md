@@ -1,5 +1,6 @@
 Cara Mulrooney and Dasha Chadiuk
-Collaborators: Full section & CAs :)
+
+Collaborators: Full section & CAs & Avi :)
 
 ## Instruction Checklist
 Optional instructions are in italics.
@@ -27,33 +28,43 @@ Optional instructions are in italics.
 ### Memory-Types (Loads/Stores)
 - [X] lw
 - [X] sw
-- [] *lb*
-- [] *lh*
-- [] *lbu*
-- [] *lhu*
-- [] *sb*
-- [] *sh*
+- [ ] *lb*
+- [ ] *lh*
+- [ ] *lbu*
+- [ ] *lhu*
+- [ ] *sb*
+- [ ] *sh*
 
 ### B-types (Branches)
 - [X] beq
 - [X] bne
-- [] *blt*
-- [] *bge*
-- [] *bltu*
-- [] *bgeu*
+- [ ] *blt*
+- [ ] *bge*
+- [ ] *bltu*
+- [ ] *bgeu*
 ### J-types (Jumps)
 - [X] jal
 - [X] jalr (technically an i-type)
 ### U-types (Upper immediates)
-- [] *lui*
-- [] *auipc*
+- [ ] *lui*
+- [ ] *auipc*
 
 Note, the above list doesn't include some common psuedo-instructions like `ret` and `j` and `not` since those can be experssed in terms of what we've already listed here. See `assembler.py` for more details.
 
 ## Note from Cara and Dasha
-This lab posed a great challenge, as we got caught up in a cycle of debugging for about a week and a half. In this process, we utilized our resources through reaching out to and collaborating with our peers, CAs, and Avi. After meeting with Avi and going over our code, we realized that, though our logic was sound, our implementation had several small issues blocking our progress. Over our session, we took note of several professional code practices and debugging strategies. We learned to always check that we aren’t changing the value of a variable in multiple places, always implement default states in always_comb blocks, keep variable naming conventions consistent, and group similar functional blocks together. As a group, we decided that the best, most time-efficient path forward was to use the solutions for a CPU without branches, implement branching ourselves, and finish the lab with our own custom assembly file. Although we used the CPU solution file, we still learned from the professionally-written code, as we took the time to understand the code written, run tests, and observe the gtkwave outputs. Overall, though this lab was very challenging, we thought it was a great learning experience, as we learned to utilize our resources, communicate with others, and develop our coding practices.
+This lab posed a great challenge, as we got caught up in a cycle of debugging for about a week and a half. In this process, we utilized our resources through reaching out to and collaborating with our peers, CAs, and Avi. After meeting with Avi and going over our code, we realized that, though our logic was sound, our implementation had several small issues blocking our progress. Over our session, we took note of several professional code practices and debugging strategies. We learned to always check that we aren’t changing the value of a variable in multiple places, always implement default states in always_comb blocks, keep variable naming conventions consistent, and group similar functional blocks together. As a group, we decided that the best, most time-efficient path forward was to use the solutions for a CPU without branches, implement branching ourselves, and finish the lab with our own custom assembly file. Although we used the CPU solution file, we still learned from the professionally-written code, as we took the time to understand the code written, run tests, and observe the gtkwave outputs. In the future, we will make sure to check that we aren't changing variable values in multiple places, keep variable naming consistent, implement default states, group similar code blocks together, and follow the datapath of each instruction in gtkwave to debug efficiently. Overall, although this lab was very challenging, we thought it was a great learning experience, as we learned to utilize our resources, communicate with others, and develop our coding practices.
 
-## Documentation
+## Custom Assembly File - cycle_led.s
+We used bit masking to set the RGB LED colors to cycle through several options. We performed bitwise ORing in order to set a subset of of the relevant bits of the LED MMR address which let us adjust the color of the LED. We then shift the bits to set them to the right location in the address: LED 0, LED 1, red, green, or blue. 
+
+For example: 
+```Ori t0, x0, 8``` sets the first 4 bits to 1000 to turn on LED 0. We then use the ```slli``` command to shift it right by 4 (since led0 is 4 bits long). 
+
+To set the LEDs to a specific color, we can go in order through the address and set the bits to our desired values. The order in which we have to set the bits is dictated by the order in the address. Thus, we set LED 0 first, then LED 1, then red, green, and blue. Since LED0 and LED1 are each 4 bits, we shift them by 4 bits to the left. Red, green, and blue bits of the address are each a byte long, so after setting them to our desired value, we shift them left by 8 bits. The last step is to store this information in our registers. 
+
+Our custom assembly file includes some fun colors, such as sky blue, forest green, and coral (among others). 
+
+## Diagrams & Schematics
 ### Main FSM
 ![](docs/CompArchLab3FSM.jpg)
 

@@ -16,7 +16,8 @@ ori  t0, t0, 255 # blue percentage
 slli t0, t0, 8
 
 sw t0, 0(s1)
-
+addi a0, zero, 250
+jal ra, DELAY
 //Color 2: Mint Green 
 ori  t0, x0, 8 # led0
 slli t0, t0, 4 
@@ -30,7 +31,8 @@ ori  t0, t0, 137 # blue percentage
 slli t0, t0, 8
 
 sw t0, 0(s1)
-
+addi a0, zero, 250
+jal ra, DELAY
 //Color 3: SKy Blue 
 ori  t0, x0, 8 # led0
 slli t0, t0, 4 
@@ -44,7 +46,8 @@ ori  t0, t0, 235 # blue percentage
 slli t0, t0, 8
 
 sw t0, 0(s1)
-
+addi a0, zero, 250
+jal ra, DELAY
 //Color 4: Lilac 
 ori  t0, x0, 8 # led0
 slli t0, t0, 4 
@@ -59,7 +62,8 @@ slli t0, t0, 8
 
 sw t0, 0(s1)
 
-
+addi a0, zero, 250
+jal ra, DELAY
 //Color 5: Forest Green  
 ori  t0, x0, 8 # led0
 slli t0, t0, 4 
@@ -73,7 +77,8 @@ ori  t0, t0, 119 # blue percentage
 slli t0, t0, 8
 
 sw t0, 0(s1)
-
+addi a0, zero, 250
+jal ra, DELAY
 //Color 6: Salmony/Coraly Orange/Pink 
 ori  t0, x0, 8 # led0
 slli t0, t0, 4 
@@ -87,7 +92,8 @@ ori  t0, t0, 170 #blue percentage
 slli t0, t0, 8
 
 sw t0, 0(s1)
-
+addi a0, zero, 250
+jal ra, DELAY
 
 
 

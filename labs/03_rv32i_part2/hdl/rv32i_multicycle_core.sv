@@ -317,6 +317,8 @@ always_comb begin: PC_and_IR_control_unit
   case(funct3)
     FUNCT3_BEQ: branch_taken = equal;
     FUNCT3_BNE: branch_taken = ~equal;
+    FUNCT3_BLT, FUNCT3_BLTU: branch_taken = alu_result[0];
+    FUNCT3_BGE, FUNCT3_BGEU: branch_taken = ~alu_result[0];
     default: branch_taken = 0;
   endcase
 

@@ -19,7 +19,10 @@ MAIN:
 	sw t0, 0(s1)
 	addi a0, zero, 250
 	jal ra, DELAY
+	
+
 //Color 2: Mint Green 
+
 	ori  t0, x0, 8 # led0
 	slli t0, t0, 4 
 	ori  t0, t0, 4 # led1
@@ -34,7 +37,9 @@ MAIN:
 	sw t0, 0(s1)
 	addi a0, zero, 250
 	jal ra, DELAY
+
 //Color 3: SKy Blue 
+	
 	ori  t0, x0, 8 # led0
 	slli t0, t0, 4 
 	ori  t0, t0, 4 # led1
@@ -50,6 +55,7 @@ MAIN:
 	addi a0, zero, 250
 	jal ra, DELAY
 	//Color 4: Lilac 
+	
 	ori  t0, x0, 8 # led0
 	slli t0, t0, 4 
 	ori  t0, t0, 4 # led1
@@ -66,6 +72,7 @@ MAIN:
 	addi a0, zero, 250
 	jal ra, DELAY
 	//Color 5: Forest Green  
+	
 	ori  t0, x0, 8 # led0
 	slli t0, t0, 4 
 	ori  t0, t0, 4 # led1
@@ -80,7 +87,9 @@ MAIN:
 	sw t0, 0(s1)
 	addi a0, zero, 250
 	jal ra, DELAY
+
 	//Color 6: Salmony/Coraly Orange/Pink 
+	
 	ori  t0, x0, 8 # led0
 	slli t0, t0, 4 
 	ori  t0, t0, 4 # led1
@@ -125,7 +134,7 @@ BLINK_FOR:  beq s1, zero, DONE
             jal ra, DELAY
             j BLINK_FOR
 
-DONE: beq x0, x0, DONE # infinite loop at end
+//DONE: beq x0, x0, DONE # infinite loop at end
 
 # Delay function - loops for a0 milliseconds. Returns nothing.
 DELAY: addi t0, x0, 1 
@@ -156,20 +165,3 @@ SET_LED0:  addi t0, x0, 1 # Get MMR base address into register t0.
   sw t1, 0(t0)
   ret # shorthand for `jr ra`
 
-# Write an interesting pattern into VRAM (DMA example)
-# Set a variable as the start of VRAM
-# Set loop from 0 to 320*240 of VRAM addresses
-# t1 = 320*240. Too big for an immediate! Use a shift to get the right value
-# for (t0 = 0; t0 < t1; t0 = t0 + 1)
-#   t2 = s1 + t0
-#   vram[t2] = t2
-VRAM_SWEEP: addi t3, x0, 2
-  slli t3, t3, 28 # t3 =  32'h2000_0000, the base address for VRAM
-  addi t1, x0, 75 # t1 = x6 = 75
-  slli t1, t1, 10 # # t1 = 320*240
-  addi t0, x0, 0  # t0 : 'color' to write into the pixel
-  LOOP_START: add t2, t3, t0 # t2 = x7 = x8 + x5
-    addi t0, t0, 17
-    sw t0, 0(t2)  
-    blt t0, t1, LOOP_START
-  ret
